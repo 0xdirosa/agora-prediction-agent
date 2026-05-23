@@ -19,10 +19,10 @@ function getCategory(question: string): string {
   const q = question.toLowerCase();
   if (q.includes("world cup") || q.includes("fifa")) return "sports-worldcup";
   if (q.includes("nba") || q.includes("nfl") || q.includes("nhl") || q.includes("mlb") || q.includes("ncaa")) return "sports-other";
+  if (q.includes("trump") || q.includes("biden") || q.includes("elon") || q.includes("musk")) return "politics";
   if (q.includes("fed") || q.includes("rate") || q.includes("inflation") || q.includes("cpi") || q.includes("gdp")) return "macro";
   if (q.includes("election") || q.includes("president") || q.includes("senate") || q.includes("congress")) return "politics";
   if (q.includes("bitcoin") || q.includes("crypto") || q.includes("eth") || q.includes("solana")) return "crypto";
-  if (q.includes("trump") || q.includes("biden") || q.includes("elon") || q.includes("musk")) return "politics";
   return "other";
 }
 
@@ -159,11 +159,17 @@ export class PredictionAgent {
         probability = marketPrice;
       }
 
-      const ev = calculateEV(probability, marketPrice);
-      const edge = probability - marketPrice;
+      const yesPrice = marketPrice;
+      const noPrice = 1 - yesPrice;
+      const noProb = 1 - probability;
+      const yesEv = calculateEV(probability, yesPrice);
+      const noEv = calculateEV(noProb, noPrice);
+      const ev = Math.max(yesEv, noEv);
+      const bestDir = yesEv >= noEv ? "YES" : "NO";
+      const bestEdge = yesEv >= noEv ? probability - yesPrice : noProb - noPrice;
       const valueBet = isValueBet(ev, this.minEV);
 
-      console.log(`  Groq estimate: ${(probability * 100).toFixed(1)}% | Edge: ${edge > 0 ? '+' : ''}${(edge * 100).toFixed(2)}pp | EV per $1: ${ev > 0 ? '+' : ''}${(ev * 100).toFixed(2)}% | Value bet: ${valueBet}`);
+      console.log(`  Groq estimate: ${(probability * 100).toFixed(1)}% | YES_ev: ${(yesEv * 100).toFixed(2)}% | NO_ev: ${(noEv * 100).toFixed(2)}% | Best: ${bestDir} (${(ev * 100).toFixed(2)}%) | Value bet: ${valueBet}`);
 
       opportunities.push({
         conditionId: m.conditionId,
