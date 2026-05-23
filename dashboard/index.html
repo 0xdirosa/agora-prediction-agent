@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agora Prediction Agent — Dashboard</title>
+<style>
+  :root {
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #12121a;
+    --bg-card: #1a1a26;
+    --bg-hover: #222233;
+    --border: #2a2a3e;
+    --text-primary: #e0e0f0;
+    --text-secondary: #8888aa;
+    --text-muted: #555577;
+    --green: #22c55e;
+    --green-bg: rgba(34, 197, 94, 0.1);
+    --red: #ef4444;
+    --red-bg: rgba(239, 68, 68, 0.1);
+    --yellow: #eab308;
+    --yellow-bg: rgba(234, 179, 8, 0.1);
+    --blue: #3b82f6;
+    --blue-bg: rgba(59, 130, 246, 0.1);
+    --purple: #a855f7;
+    --purple-bg: rgba(168, 85, 247, 0.1);
+    --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    grid-template-rows: auto 1fr;
+    gap: 0;
+    height: 100vh;
+  }
+
+  /* ── Top Bar ── */
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .topbar-title {
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: var(--text-primary);
+  }
+
+  .topbar-title span { color: var(--text-muted); font-weight: 400; }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .status-dot.running { background: var(--green); box-shadow: 0 0 8px var(--green); }
+  .status-dot.paused  { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+  .status-dot.stopped { background: var(--text-muted); }
+
+  .btn {
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .btn:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+  .btn-start { border-color: var(--green); color: var(--green); }
+  .btn-start:hover { background: var(--green-bg); }
+  .btn-stop  { border-color: var(--red); color: var(--red); }
+  .btn-stop:hover  { background: var(--red-bg); }
+  .btn-refresh { border-color: var(--blue); color: var(--blue); }
+  .btn-refresh:hover { background: var(--blue-bg); }
+
+  /* ── Main Content ── */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panels {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    padding: 0;
+  }
+
+  .panel {
+    background: var(--bg-secondary);
+    padding: 16px 20px;
+  }
+
+  .panel-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .panel-value {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--text-primary);
+  }
+
+  .panel-value.green { color: var(--green); }
+  .panel-value.yellow { color: var(--yellow); }
+  .panel-value.blue { color: var(--blue); }
+  .panel-value.purple { color: var(--purple); }
+
+  .panel-sub {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  /* ── Decision Feed ── */
+  .feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+
+  .feed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .feed-header h3 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+  }
+
+  .feed-header span {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+  }
+
+  .feed-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-muted);
+    font-size: 13px;
+    gap: 8px;
+  }
+
+  .feed-empty .icon { font-size: 32px; opacity: 0.3; }
+
+  .decision {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    animation: slideIn 0.3s ease-out;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .decision-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+  }
+
+  .decision-market {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.3;
+  }
+
+  .decision-direction {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    margin-left: 8px;
+  }
+
+  .decision-direction.yes { background: var(--green-bg); color: var(--green); }
+  .decision-direction.no  { background: var(--red-bg); color: var(--red); }
+
+  .decision-meta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+
+  .decision-tag {
+    font-size: 10px;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    background: var(--bg-primary);
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+
+  .decision-tag.ev      { color: var(--green); }
+  .decision-tag.kelly   { color: var(--blue); }
+  .decision-tag.conf    { color: var(--purple); }
+  .decision-tag.bet     { color: var(--yellow); }
+
+  .decision-reason {
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    max-height: 80px;
+    overflow-y: auto;
+    cursor: pointer;
+  }
+
+  .decision-reason:hover { color: var(--text-primary); }
+
+  .decision-time {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    margin-top: 6px;
+  }
+
+  /* ── Sidebar (log stream) ── */
+  .sidebar {
+    background: var(--bg-primary);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .sidebar-header h3 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+  }
+
+  .sidebar-header .clear-btn {
+    font-size: 10px;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-mono);
+  }
+
+  .sidebar-header .clear-btn:hover { color: var(--text-primary); }
+
+  .log-stream {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.6;
+  }
+
+  .log-line {
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .log-line.info    { color: var(--text-secondary); }
+  .log-line.success { color: var(--green); }
+  .log-line.warn    { color: var(--yellow); }
+  .log-line.error   { color: var(--red); }
+  .log-line.bold    { color: var(--text-primary); font-weight: 600; }
+
+  /* ── Wallet Details ── */
+  .wallet-detail {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 0 20px 12px;
+  }
+
+  .wallet-detail-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    padding: 3px 0;
+    font-family: var(--font-mono);
+  }
+
+  .wallet-detail-row .label { color: var(--text-muted); }
+  .wallet-detail-row .value { color: var(--text-secondary); }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; }
+    .sidebar { border-left: none; border-top: 1px solid var(--border); max-height: 300px; }
+    .panels { grid-template-columns: repeat(2, 1fr); }
+    .topbar-title { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+  <div class="layout">
+    <!-- Top Bar -->
+    <div class="topbar">
+      <div class="topbar-title">AGORA <span>Prediction Agent</span></div>
+      <div class="topbar-right">
+        <div class="status-badge">
+          <span class="status-dot stopped" id="statusDot"></span>
+          <span id="statusText">STOPPED</span>
+        </div>
+        <button class="btn btn-start" id="btnStart">▶ Start</button>
+        <button class="btn btn-stop" id="btnStop">■ Stop</button>
+        <button class="btn btn-refresh" id="btnRefresh">↻</button>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main">
+      <!-- Metric Panels -->
+      <div class="panels">
+        <div class="panel">
+          <div class="panel-label">Bankroll</div>
+          <div class="panel-value green" id="bankroll">$0.00</div>
+          <div class="panel-sub">USDC on Arc Testnet</div>
+        </div>
+        <div class="panel">
+          <div class="panel-label">Bets Placed</div>
+          <div class="panel-value blue" id="betsPlaced">0</div>
+          <div class="panel-sub" id="totalWagered">$0.00 total wagered</div>
+        </div>
+        <div class="panel">
+          <div class="panel-label">Avg EV / Bet</div>
+          <div class="panel-value purple" id="avgEv">0.00%</div>
+          <div class="panel-sub" id="totalEvCaptured">+$0.0000 total</div>
+        </div>
+        <div class="panel">
+          <div class="panel-label">Markets Scanned</div>
+          <div class="panel-value yellow" id="marketsScanned">0</div>
+          <div class="panel-sub" id="cyclesCompleted">0 cycles</div>
+        </div>
+      </div>
+
+      <!-- Wallet Detail -->
+      <div class="wallet-detail" id="walletDetail">
+        <div class="wallet-detail-row"><span class="label">Wallet</span><span class="value" id="walletAddress">not configured</span></div>
+        <div class="wallet-detail-row"><span class="label">Network</span><span class="value">Arc Testnet (5042002)</span></div>
+        <div class="wallet-detail-row"><span class="label">Block</span><span class="value" id="blockNumber">—</span></div>
+        <div class="wallet-detail-row"><span class="label">RPC</span><span class="value" id="rpcUrl">—</span></div>
+      </div>
+
+      <!-- Decision Feed -->
+      <div class="feed" id="feed">
+        <div class="feed-header">
+          <h3>Decision Feed</h3>
+          <span id="decisionCount">0 decisions</span>
+        </div>
+        <div class="feed-empty" id="feedEmpty">
+          <div class="icon">📡</div>
+          <div>Waiting for agent decisions...</div>
+          <div style="font-size:11px">Click Start to begin an analysis cycle</div>
+        </div>
+        <div id="feedList"></div>
+      </div>
+    </div>
+
+    <!-- Sidebar: Log Stream -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h3>Agent Log Stream</h3>
+        <div style="display:flex;gap:8px">
+          <button class="clear-btn" id="btnAutoScroll" title="Toggle auto-scroll">↧</button>
+          <button class="clear-btn" onclick="document.getElementById('logStream').innerHTML='<div class=\\'log-line muted\\'>Logs cleared</div>'">clear</button>
+        </div>
+      </div>
+      <div class="log-stream" id="logStream">
+        <div class="log-line muted">Waiting for agent activity...</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API = '/api';
+let lastDecisionCount = 0;
+let autoScroll = true;
+
+// ── SSE Log Stream ──
+function connectSSE() {
+  const es = new EventSource(`${API}/logs/stream`);
+
+  es.onmessage = (e) => {
+    try {
+      const entry = JSON.parse(e.data);
+      appendLog(entry);
+    } catch {}
+  };
+
+  es.onerror = () => {
+    // Will auto-reconnect
+  };
+}
+
+function appendLog(entry) {
+  const stream = document.getElementById('logStream');
+  const placeholder = stream.querySelector('.log-line.muted');
+  if (placeholder) placeholder.remove();
+
+  const time = new Date(entry.timestamp).toLocaleTimeString();
+  const line = document.createElement('div');
+  line.className = 'log-line ' + (entry.level || 'info');
+  line.textContent = `[${time}] ${entry.message}`;
+  stream.appendChild(line);
+
+  if (autoScroll) {
+    stream.scrollTop = stream.scrollHeight;
+  }
+}
+
+// ── Fetch & Render ──
+async function refreshAll() {
+  await Promise.all([
+    fetchStatus(),
+    fetchWallet(),
+    fetchMetrics(),
+    fetchDecisions(),
+  ]);
+}
+
+async function fetchStatus() {
+  try {
+    const r = await fetch(`${API}/status`);
+    const data = await r.json();
+    const dot = document.getElementById('statusDot');
+    const txt = document.getElementById('statusText');
+    dot.className = 'status-dot ' + data.status;
+    txt.textContent = data.status.toUpperCase();
+
+    if (data.lastCycle) {
+      document.getElementById('cyclesCompleted').textContent =
+        (data.cyclesCompleted ?? 0) + ' cycles';
+    }
+  } catch {}
+}
+
+async function fetchWallet() {
+  try {
+    const r = await fetch(`${API}/wallet`);
+    const data = await r.json();
+    document.getElementById('walletAddress').textContent = data.walletAddress;
+    document.getElementById('blockNumber').textContent = data.blockNumber;
+    document.getElementById('rpcUrl').textContent = data.rpcUrl;
+  } catch {}
+}
+
+async function fetchMetrics() {
+  try {
+    const r = await fetch(`${API}/metrics`);
+    const data = await r.json();
+    document.getElementById('bankroll').textContent = '$' + data.bankrollRemaining;
+    document.getElementById('betsPlaced').textContent = data.totalBetsPlaced;
+    document.getElementById('totalWagered').textContent = '$' + data.totalWageredUsdc + ' total wagered';
+    document.getElementById('avgEv').textContent = data.avgEvPercent + '%';
+    document.getElementById('totalEvCaptured').textContent = '+$' + data.totalEvCapturedUsdc + ' total';
+    document.getElementById('marketsScanned').textContent = data.opportunitiesScanned;
+  } catch {}
+}
+
+async function fetchDecisions() {
+  try {
+    const r = await fetch(`${API}/decisions`);
+    const data = await r.json();
+    document.getElementById('decisionCount').textContent = data.count + ' decisions';
+
+    if (data.count === 0) {
+      document.getElementById('feedEmpty').style.display = 'flex';
+      document.getElementById('feedList').innerHTML = '';
+      return;
+    }
+
+    document.getElementById('feedEmpty').style.display = 'none';
+
+    // Only re-render if new decisions arrived
+    if (data.count === lastDecisionCount) return;
+    lastDecisionCount = data.count;
+
+    const list = document.getElementById('feedList');
+    list.innerHTML = data.decisions.map(d => renderDecision(d)).join('');
+  } catch {}
+}
+
+function renderDecision(d) {
+  const dir = d.direction === 'YES' ? 'yes' : 'no';
+  const dirLabel = d.direction;
+  const evPct = (d.ev * 100).toFixed(2);
+  const kellyPct = (d.kellyFraction * 100).toFixed(2);
+  const confPct = (d.confidence * 100).toFixed(1);
+  const title = d.marketQuestion || 'Unknown Market';
+  const shortReason = d.reasoning
+    ? d.reasoning.split('\n').slice(0, 5).join('\n').substring(0, 300)
+    : 'No reasoning';
+
+  return `<div class="decision">
+    <div class="decision-header">
+      <div class="decision-market">${escHtml(title.substring(0, 80))}</div>
+      <span class="decision-direction ${dir}">${dirLabel}</span>
+    </div>
+    <div class="decision-meta">
+      <span class="decision-tag ev">EV ${evPct}%</span>
+      <span class="decision-tag kelly">K ${kellyPct}%</span>
+      <span class="decision-tag conf">C ${confPct}%</span>
+      <span class="decision-tag bet">$${d.size.toFixed(2)}</span>
+    </div>
+    <div class="decision-reason" onclick="this.style.maxHeight=this.style.maxHeight==='80px'?'none':'80px'">${escHtml(shortReason)}</div>
+    <div class="decision-time">${new Date(d.timestamp).toLocaleTimeString()}</div>
+  </div>`;
+}
+
+function escHtml(s) {
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+// ── Actions ──
+document.getElementById('btnStart').addEventListener('click', async () => {
+  addLog('Starting agent cycle...', 'info');
+  try {
+    const r = await fetch(`${API}/start`, { method: 'POST' });
+    const data = await r.json();
+    addLog(data.message || 'Cycle started', 'success');
+  } catch (e) {
+    addLog('Failed to start: ' + e.message, 'error');
+  }
+});
+
+document.getElementById('btnStop').addEventListener('click', async () => {
+  addLog('Stopping agent...', 'warn');
+  try {
+    const r = await fetch(`${API}/stop`, { method: 'POST' });
+    const data = await r.json();
+    addLog(data.message || 'Stopped', 'warn');
+  } catch (e) {
+    addLog('Failed to stop: ' + e.message, 'error');
+  }
+});
+
+document.getElementById('btnRefresh').addEventListener('click', refreshAll);
+
+document.getElementById('btnAutoScroll').addEventListener('click', () => {
+  autoScroll = !autoScroll;
+  const btn = document.getElementById('btnAutoScroll');
+  btn.style.opacity = autoScroll ? '1' : '0.4';
+  if (autoScroll) {
+    const stream = document.getElementById('logStream');
+    stream.scrollTop = stream.scrollHeight;
+  }
+});
+
+// Connect SSE for live logs
+connectSSE();
+
+// ── Log Stream (for non-SSE events) ──
+function addLog(msg, type = 'info') {
+  const stream = document.getElementById('logStream');
+  const placeholder = stream.querySelector('.log-line.muted');
+  if (placeholder) placeholder.remove();
+
+  const time = new Date().toLocaleTimeString();
+  const line = document.createElement('div');
+  line.className = 'log-line ' + type;
+  line.textContent = `[${time}] ${msg}`;
+  stream.appendChild(line);
+
+  if (autoScroll) {
+    stream.scrollTop = stream.scrollHeight;
+  }
+}
+
+// ── Polling ──
+setInterval(refreshAll, 5000);
+refreshAll();
+
+// Watch for new decisions via polling — add log entries
+let prevDecisionIds = new Set();
+setInterval(async () => {
+  try {
+    const r = await fetch(`${API}/decisions`);
+    const data = await r.json();
+    const currentIds = new Set(data.decisions.map(d => d.timestamp + d.marketQuestion));
+    for (const d of data.decisions) {
+      const id = d.timestamp + d.marketQuestion;
+      if (!prevDecisionIds.has(id)) {
+        const evPct = (d.ev * 100).toFixed(2);
+        const dir = d.direction;
+        addLog(`📊 ${dir} $${d.size.toFixed(2)} on "${d.marketQuestion.substring(0, 50)}..." (EV: ${evPct}%)`, 'success');
+      }
+    }
+    prevDecisionIds = currentIds;
+  } catch {}
+}, 5000);
+</script>
+</body>
+</html>

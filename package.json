@@ -1,0 +1,31 @@
+{
+  "name": "agora-prediction-agent",
+  "version": "1.0.0",
+  "description": "AI prediction market trading agent for Agora Hackathon — finds +EV bets on Polymarket and executes via Circle Dev-Controlled Wallets on Arc",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dev": "tsx --watch src/index.ts",
+    "create-wallet": "tsx src/wallet/create-wallet.ts",
+    "check-balance": "tsx src/wallet/check-balance.ts",
+    "server": "tsx src/server.ts",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "^10.1.0",
+    "@circle-fin/x402-batching": "^3.0.4",
+    "axios": "^1.7.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "groq-sdk": "^1.2.0",
+    "openai": "^6.25.0",
+    "viem": "^2.46.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.19.19",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
+  }
+}
