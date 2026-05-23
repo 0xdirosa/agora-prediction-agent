@@ -1,7 +1,7 @@
 import { fetchActiveMarkets } from "../markets/polymarketClient.js";
 import { calculateEV, kellyBetSize, isValueBet } from "../analysis/evCalculator.js";
 import { estimateProbability } from "../analysis/sentimentAnalyzer.js";
-import { initWallet, getUSDCBalance } from "../wallet/circleWallet.js";
+import { initWallet, getUSDCBalance, transferAndWait } from "../wallet/circleWallet.js";
 import type {
   MarketOpportunity,
   BetDecision,
@@ -323,10 +323,7 @@ export class PredictionAgent {
     console.log(`[EXECUTE] Kelly Fraction: ${(decision.kellyFraction * 100).toFixed(2)}%`);
     console.log(`[EXECUTE] Confidence: ${(decision.confidence * 100).toFixed(1)}%`);
 
-    // Deduct from bankroll
-    this.bankroll -= decision.size;
-
-    // Record bet
+    // Record bet (bankroll deducted after successful execution)
     const record: BetRecord = {
       timestamp: new Date().toISOString(),
       marketQuestion: decision.marketQuestion,
@@ -343,19 +340,36 @@ export class PredictionAgent {
       executed: true,
     };
 
-    // Execute or dry-run
+    let txSucceeded = false;
     if (this.dryRun) {
-      console.log(`[EXECUTE] [DRY RUN] Would transfer $${decision.size.toFixed(2)} USDC from ${this.walletAddress} to Polymarket deposit`);
+      console.log(`[EXECUTE] [DRY RUN] Would transfer $${decision.size.toFixed(2)} USDC from ${this.walletAddress}`);
       console.log(`[EXECUTE] [DRY RUN] Skipping real transfer — dry run mode`);
       record.txHash = "dry_run";
+      txSucceeded = true;
     } else {
-      console.log(`[EXECUTE] [LIVE] Transferring $${decision.size.toFixed(2)} USDC from ${this.walletAddress} to Polymarket deposit`);
-      record.txHash = "live_tx_pending";
+      const destAddr = process.env.AGENT_TRANSFER_ADDRESS ?? this.walletAddress;
+      console.log(`[EXECUTE] [LIVE] Sending $${decision.size.toFixed(2)} USDC to ${destAddr}...`);
+      try {
+        const result = await transferAndWait(this.walletId, destAddr, decision.size);
+        record.txHash = result.txHash ?? "live_tx_sent";
+        console.log(`[EXECUTE] ✓ Transaction complete: ${result.txHash}`);
+        console.log(`[EXECUTE] ✓ Explorer: https://testnet.arcscan.app/tx/${result.txHash}`);
+        txSucceeded = true;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[EXECUTE] ✗ Transfer failed: ${msg}`);
+        record.error = msg;
+      }
     }
 
-    this.betsPlaced.push(record);
-    console.log(`[EXECUTE] ✓ Bet recorded. Total bets placed: ${this.betsPlaced.length}`);
-    console.log(`[EXECUTE] Remaining bankroll: $${this.bankroll.toFixed(2)} USDC`);
+    if (txSucceeded) {
+      this.bankroll -= decision.size;
+      this.betsPlaced.push(record);
+      console.log(`[EXECUTE] ✓ Bet recorded. Total bets placed: ${this.betsPlaced.length}`);
+      console.log(`[EXECUTE] Remaining bankroll: $${this.bankroll.toFixed(2)} USDC`);
+    } else {
+      console.log(`[EXECUTE] ✗ Bet skipped — transfer did not complete`);
+    }
 
     return {
       success: true,

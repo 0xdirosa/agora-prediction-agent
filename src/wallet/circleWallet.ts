@@ -194,32 +194,25 @@ export async function getUSDCBalance(walletId: string): Promise<number> {
 }
 
 export async function transferUSDC(
-  fromWalletAddress: string,
+  walletId: string,
   toAddress: string,
-  amount: string,
-  walletId?: string,
+  amountUsdc: number,
 ): Promise<TransferResult> {
   const client = getClient();
+  const amountAtomic = BigInt(Math.floor(amountUsdc * 1_000_000)).toString();
 
-  console.log(`[CircleWallet] Transferring ${amount} USDC from ${fromWalletAddress} to ${toAddress}`);
+  console.log(`[CircleWallet] Transfer ${amountUsdc} USDC (${amountAtomic} at. units) → ${toAddress}`);
 
-  const payload: Record<string, unknown> = {
-    walletAddress: fromWalletAddress,
-    blockchain: "ARC-TESTNET",
-    tokenAddress: USDC_ADDRESS,
-    destinationAddress: toAddress,
-    amount: [amount],
-    fee: { type: "level", config: { feeLevel: "MEDIUM" } },
-  };
+  const response = await client.createContractExecutionTransaction({
+    walletId,
+    contractAddress: USDC_ADDRESS,
+    abiFunctionSignature: "transfer(address,uint256)",
+    abiParameters: [toAddress, amountAtomic],
+    fee: { type: "level", config: { feeLevel: "HIGH" } },
+  });
 
-  if (walletId) {
-    payload.idempotencyKey = crypto.randomUUID();
-  }
-
-  const response = await client.createTransaction(payload as any);
-
-  const txData = response.data;
-  if (!txData?.id) {
+  const data = response.data;
+  if (!data?.id) {
     throw new CircleWalletError(
       "Transfer initiation failed: no transaction ID returned",
       "transferUSDC",
@@ -227,15 +220,17 @@ export async function transferUSDC(
     );
   }
 
-  console.log(`[CircleWallet] Transfer initiated: ${txData.id}`);
+  console.log(`[CircleWallet] Transfer initiated: ${data.id} (state: ${data.state})`);
   return {
-    id: txData.id,
-    state: "INITIATED",
-    sourceAddress: fromWalletAddress,
+    id: data.id,
+    state: (data.state ?? "INITIATED") as TransferResult["state"],
+    sourceAddress: undefined,
     destinationAddress: toAddress,
-    amount,
+    amount: amountUsdc.toString(),
   };
 }
+
+
 
 export async function waitForCompletion(
   transactionId: string,
@@ -345,12 +340,11 @@ export async function getWalletInfo(walletId: string): Promise<WalletInfo> {
 }
 
 export async function transferAndWait(
-  fromWalletAddress: string,
+  walletId: string,
   toAddress: string,
-  amount: string,
-  walletId?: string,
+  amountUsdc: number,
 ): Promise<TransferResult> {
-  const initiated = await transferUSDC(fromWalletAddress, toAddress, amount, walletId);
+  const initiated = await transferUSDC(walletId, toAddress, amountUsdc);
   const completed = await waitForCompletion(initiated.id);
   return completed;
 }
