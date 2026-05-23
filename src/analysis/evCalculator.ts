@@ -5,7 +5,7 @@ export function calculateImpliedProbability(price: number): number {
   return price;
 }
 
-const MAX_EV = 2.0; // 200% cap — prevents extreme longshot overestimation
+const MIN_EDGE = 0.01;
 
 export function calculateEV(
   ourProbability: number,
@@ -13,15 +13,27 @@ export function calculateEV(
 ): number {
   if (ourProbability <= 0 || ourProbability >= 1) return 0;
   if (marketPrice <= 0 || marketPrice >= 1) return 0;
-  const ev = Math.min(MAX_EV, (ourProbability - marketPrice) / marketPrice);
-  console.log(`  [EV_DEBUG] ourProb=${ourProbability.toFixed(4)}, marketPrice=${marketPrice.toFixed(4)}, rawEv=${((ourProbability - marketPrice) / marketPrice * 100).toFixed(2)}%, cappedEv=${(ev * 100).toFixed(2)}%`);
+
+  const edge = ourProbability - marketPrice;
+
+  if (Math.abs(edge) < MIN_EDGE) {
+    console.log(`  [EV] edge=${(edge * 100).toFixed(2)}pp < ${(MIN_EDGE * 100).toFixed(0)}pp → EV=0`);
+    return 0;
+  }
+
+  if (edge <= 0) return edge;
+
+  const oddsIfWin = (1 / marketPrice) - 1;
+  const ev = ourProbability * oddsIfWin - (1 - ourProbability);
+
+  console.log(`  [EV] price=${(marketPrice * 100).toFixed(1)}% ourProb=${(ourProbability * 100).toFixed(1)}% edge=+${(edge * 100).toFixed(2)}pp odds=${oddsIfWin.toFixed(2)}:1 → EV=+${(ev * 100).toFixed(2)}¢/¢`);
+
   return ev;
 }
 
 export function isConfidentBet(ourProbability: number, marketPrice: number): boolean {
-  // For extreme longshots (market < 5%), require probability to be at least 2× market price
-  if (marketPrice < 0.05 && ourProbability < marketPrice * 2) return false;
-  return true;
+  const edge = ourProbability - marketPrice;
+  return Math.abs(edge) >= MIN_EDGE;
 }
 
 export function kellyBetSize(
@@ -42,30 +54,30 @@ export function kellyBetSize(
   return Math.max(0, Math.round(betAmount * 100) / 100);
 }
 
-export function isValueBet(ev: number, threshold = 0.05): boolean {
-  return ev > threshold;
+export function isValueBet(ev: number, _threshold = 0.0): boolean {
+  return ev > 0;
 }
 
-// ── Inline test ──
 if (process.argv[1]?.endsWith("evCalculator.ts")) {
-  console.log("=== evCalculator Test ===");
+  console.log("=== evCalculator Test ===\n");
 
-  const price = 0.65;
-  const implied = calculateImpliedProbability(price);
-  console.log(`Implied probability of ${price}: ${implied}`);
+  const testCases = [
+    { ourProb: 0.42, marketP: 0.40, desc: "42% on 40% (edge 2pp)" },
+    { ourProb: 0.43, marketP: 0.40, desc: "43% on 40% (edge 3pp)" },
+    { ourProb: 0.46, marketP: 0.40, desc: "46% on 40% (edge 6pp)" },
+    { ourProb: 0.55, marketP: 0.40, desc: "55% on 40% (edge 15pp)" },
+    { ourProb: 0.65, marketP: 0.40, desc: "65% on 40% (edge 25pp)" },
+  ];
 
-  const ourProb = 0.8;
-  const marketP = 0.6;
-  const ev = calculateEV(ourProb, marketP);
-  console.log(`EV(ourProb=${ourProb}, marketPrice=${marketP}): ${ev}`);
+  for (const tc of testCases) {
+    const ev = calculateEV(tc.ourProb, tc.marketP);
+    const bet = kellyBetSize(1000, tc.ourProb, tc.marketP);
+    console.log(`  ${tc.desc}: EV=${(ev * 100).toFixed(2)}¢/¢ KellyBet=$${bet.toFixed(2)}`);
+  }
 
-  const bankroll = 1000;
-  const betSize = kellyBetSize(bankroll, ourProb, marketP);
-  console.log(`Kelly bet size (bankroll=${bankroll}, ev=${ev}, prob=${ourProb}): $${betSize}`);
-
-  const valBet = isValueBet(ev, 0.05);
-  console.log(`Is value bet (ev=${ev}, threshold=0.05): ${valBet}`);
-
-  const noVal = isValueBet(0.02, 0.05);
-  console.log(`Is value bet (ev=0.02): ${noVal}`);
+  console.log("\n--- MIN_EDGE=0.01 filter test ---");
+  console.log(`edge=0.008 → EV=${(calculateEV(0.408, 0.40) * 100).toFixed(2)}%`);
+  console.log(`edge=0.010 → EV=${(calculateEV(0.410, 0.40) * 100).toFixed(2)}%`);
+  console.log(`edge=0.020 → EV=${(calculateEV(0.420, 0.40) * 100).toFixed(2)}%`);
+  console.log(`edge=0.050 → EV=${(calculateEV(0.450, 0.40) * 100).toFixed(2)}%`);
 }

@@ -7,35 +7,35 @@ async function analyzeMarketWithGroq(
   marketPrice: number,
 ): Promise<{ ourProbability: number; reasoning: string }> {
   const prompt = `
-You are a prediction market analyst.
+You are a prediction market analyst evaluating: "${marketQuestion}"
 
-Market: "${marketQuestion}"
-Current market price: ${(marketPrice * 100).toFixed(2)}%
+Current market price: ${(marketPrice * 100).toFixed(1)}%
 
-The market price already reflects crowd wisdom.
-Your job: decide if this market is slightly mispriced.
-
-Respond ONLY with valid JSON, no other text:
-{
-  "adjustment": <number between -0.05 and 0.05>,
-  "reasoning": "<one sentence max>"
-}
+Think step by step:
+1. What is this market asking?
+2. Based on your knowledge, is the current price too high, too low, or about right?
+3. What specific factors support a higher or lower probability?
+4. Estimate the TRUE probability as a single number.
 
 Rules:
-- adjustment = 0.0 means you agree with market price
-- adjustment = +0.02 means you think true probability
-  is 2 percentage points HIGHER than market price
-- adjustment = -0.02 means 2pp LOWER
-- Maximum adjustment: ±0.05 (5 percentage points)
-- For sports longshots under 2%: adjustment range is
-  only -0.01 to +0.01
-- If you have no specific knowledge: use 0.0
+- If you AGREE with the market or have NO specific knowledge: 
+  return EXACTLY ${marketPrice.toFixed(4)} (the market price)
+- If you DISAGREE: maximum deviation is ±10 percentage points
+  (e.g., from 50% to max 60% or min 40%)
+- Be precise — return probabilities like 0.43, 0.51, 0.62 not 0.5, 0.55
+- For sports/pop culture markets: trust the market more (smaller deviations)
+
+Respond with valid JSON ONLY:
+{
+  "probability": <number between 0.0 and 1.0>,
+  "reasoning": "<one sentence>"
+}
 `;
 
   const response = await groq.chat.completions.create({
     model: "llama-3.1-8b-instant",
     messages: [{ role: "user", content: prompt }],
-    temperature: 0.1,
+    temperature: 0.5,
     max_tokens: 200,
     response_format: { type: "json_object" },
   });
@@ -44,16 +44,18 @@ Rules:
     response.choices[0]?.message?.content ?? "{}",
   );
 
-  const adjustment = result.adjustment ?? 0;
+  let rawProb = result.probability ?? marketPrice;
 
-  let rawProb = marketPrice + adjustment;
-  rawProb = Math.max(0.001, Math.min(0.999, rawProb));
+  const maxProb = Math.min(0.999, marketPrice + 0.10);
+  const minProb = Math.max(0.001, marketPrice - 0.10);
+  rawProb = Math.max(minProb, Math.min(maxProb, rawProb));
 
-  console.log('[Groq adjustment]', {
+  const edge = rawProb - marketPrice;
+  console.log('[Groq probability]', {
     question: marketQuestion.substring(0, 60),
-    marketPrice: +(marketPrice * 100).toFixed(2),
-    adjustment: +adjustment.toFixed(4),
-    ourProb: +(rawProb * 100).toFixed(2),
+    marketPrice: +(marketPrice * 100).toFixed(1),
+    ourProb: +(rawProb * 100).toFixed(1),
+    edgePp: +(edge * 100).toFixed(2),
   });
 
   return {
@@ -75,7 +77,7 @@ export async function estimateProbability(
 
   try {
     const result = await analyzeMarketWithGroq(marketQuestion, marketPrice);
-    console.log(`  [Groq] prob=${(result.ourProbability * 100).toFixed(1)}%, reasoning="${result.reasoning}"`);
+    console.log(`  [Groq] prob=${(result.ourProbability * 100).toFixed(1)}% edge=${((result.ourProbability - marketPrice) * 100).toFixed(2)}pp reasoning="${result.reasoning}"`);
     return {
       probability: result.ourProbability,
       reasoning: result.reasoning,

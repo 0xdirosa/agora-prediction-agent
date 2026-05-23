@@ -1,5 +1,5 @@
 import { fetchActiveMarkets } from "../markets/polymarketClient.js";
-import { calculateEV, kellyBetSize, isValueBet, isConfidentBet } from "../analysis/evCalculator.js";
+import { calculateEV, kellyBetSize, isValueBet } from "../analysis/evCalculator.js";
 import { estimateProbability } from "../analysis/sentimentAnalyzer.js";
 import { initWallet, getUSDCBalance } from "../wallet/circleWallet.js";
 import type {
@@ -11,6 +11,9 @@ import type {
 } from "./types.js";
 
 const MAX_BETS_PER_CATEGORY = 2;
+const MIN_MARKET_PRICE = 0.08;
+const MAX_MARKET_PRICE = 0.92;
+const MIN_VOLUME = 1000;
 
 function getCategory(question: string): string {
   const q = question.toLowerCase();
@@ -108,15 +111,35 @@ export class PredictionAgent {
     });
     console.log(`[SCAN] After filter (vol>1000, liq>500, active): ${filtered.length}`);
 
-    if (filtered.length === 0) {
-      console.log("[SCAN] No markets passed liquidity filter — returning empty");
+    const eligibleMarkets = filtered.filter((m) => {
+      const price = parseFloat(m.outcomePrices[0] ?? "0.5");
+      if (price < MIN_MARKET_PRICE) {
+        console.log(`  ⏭️  SKIP ${m.title.substring(0, 50)} — price ${(price * 100).toFixed(1)}% < ${(MIN_MARKET_PRICE * 100).toFixed(0)}%`);
+        return false;
+      }
+      if (price > MAX_MARKET_PRICE) {
+        console.log(`  ⏭️  SKIP ${m.title.substring(0, 50)} — price ${(price * 100).toFixed(1)}% > ${(MAX_MARKET_PRICE * 100).toFixed(0)}%`);
+        return false;
+      }
+      const vol = parseFloat(m.volume);
+      if (vol < MIN_VOLUME) {
+        console.log(`  ⏭️  SKIP ${m.title.substring(0, 50)} — volume $${vol.toFixed(0)} < $${MIN_VOLUME}`);
+        return false;
+      }
+      return true;
+    });
+
+    console.log(`[SCAN] Eligible markets (price ${(MIN_MARKET_PRICE * 100).toFixed(0)}-${(MAX_MARKET_PRICE * 100).toFixed(0)}%, vol>$${MIN_VOLUME}): ${eligibleMarkets.length}/${filtered.length}`);
+
+    if (eligibleMarkets.length === 0) {
+      console.log("[SCAN] No eligible markets — returning empty");
       return [];
     }
 
     const opportunities: MarketOpportunity[] = [];
 
-    for (let i = 0; i < filtered.length; i++) {
-      const m = filtered[i];
+    for (let i = 0; i < eligibleMarkets.length; i++) {
+      const m = eligibleMarkets[i];
       const marketPrice = parseFloat(m.outcomePrices[0] ?? "0.5");
 
       console.log(`\n[ANALYZE ${i + 1}/${filtered.length}] "${m.title.substring(0, 60)}..."`);
@@ -137,10 +160,10 @@ export class PredictionAgent {
       }
 
       const ev = calculateEV(probability, marketPrice);
+      const edge = probability - marketPrice;
       const valueBet = isValueBet(ev, this.minEV);
 
-      console.log(`  Groq estimate: ${(probability * 100).toFixed(1)}% | Reasoning: ${reasoning}`);
-      console.log(`  EV: ${(ev * 100).toFixed(2)}% | Value bet: ${valueBet}`);
+      console.log(`  Groq estimate: ${(probability * 100).toFixed(1)}% | Edge: ${edge > 0 ? '+' : ''}${(edge * 100).toFixed(2)}pp | EV per $1: ${ev > 0 ? '+' : ''}${(ev * 100).toFixed(2)}% | Value bet: ${valueBet}`);
 
       opportunities.push({
         conditionId: m.conditionId,
@@ -168,9 +191,11 @@ export class PredictionAgent {
   async evaluateOpportunity(opportunity: MarketOpportunity): Promise<BetDecision> {
     this.requireInit();
 
+    const edgeVal = opportunity.probability - opportunity.marketPrice;
     console.log(`\n═══ Evaluating Opportunity ═══`);
     console.log(`[MARKET] ${opportunity.title}`);
     console.log(`[CONDITION] ${opportunity.conditionId}`);
+    console.log(`[PRICE] ${(opportunity.marketPrice * 100).toFixed(1)}% | Groq: ${(opportunity.probability * 100).toFixed(1)}% | Edge: ${edgeVal > 0 ? '+' : ''}${(edgeVal * 100).toFixed(2)}pp`);
 
     // Build reasoning chain
     const reasoningChain: string[] = [];
@@ -198,17 +223,21 @@ export class PredictionAgent {
 
     // Step 3: Final probability
     const finalProbability = opportunity.probability;
+    const edgePp = finalProbability - (direction === "YES" ? yesPrice : noPrice);
     reasoningChain.push(`\nStep 3 — Final Probability Estimate:`);
     reasoningChain.push(`  Probability: ${(finalProbability * 100).toFixed(1)}%`);
-    reasoningChain.push(`  Market price (${direction === "YES" ? "YES" : "NO"}): ${(direction === "YES" ? yesPrice : noPrice) * 100}%`);
+    reasoningChain.push(`  Market price (${direction === "YES" ? "YES" : "NO"}): ${((direction === "YES" ? yesPrice : noPrice) * 100).toFixed(1)}%`);
+    reasoningChain.push(`  Edge: ${edgePp > 0 ? '+' : ''}${(edgePp * 100).toFixed(2)}pp`);
 
     const finalEV = calculateEV(finalProbability, direction === "YES" ? yesPrice : noPrice);
-    reasoningChain.push(`\nStep 4 — EV Calculation:`);
     const mktPrice = direction === "YES" ? yesPrice : noPrice;
-    reasoningChain.push(`  EV = (ourProb / marketPrice) - 1 = (${finalProbability.toFixed(4)} / ${mktPrice.toFixed(4)}) - 1`);
-    reasoningChain.push(`  EV = ${(finalEV * 100).toFixed(2)}%`);
-    reasoningChain.push(`  EV threshold: ${(this.minEV * 100).toFixed(1)}%`);
-    reasoningChain.push(`  ${finalEV > this.minEV ? "✓ ABOVE threshold — value bet" : "✗ BELOW threshold — skip"}`);
+    const oddsIfWin = (1 / mktPrice) - 1;
+    reasoningChain.push(`\nStep 4 — EV Calculation:`);
+    reasoningChain.push(`  Direction: ${direction} (market price ${(mktPrice * 100).toFixed(1)}%)`);
+    reasoningChain.push(`  Odds: ${oddsIfWin.toFixed(2)}:1`);
+    reasoningChain.push(`  EV per $1 bet: ${finalEV > 0 ? '+' : ''}${(finalEV * 100).toFixed(2)}%`);
+    reasoningChain.push(`  EV threshold: > $0.00 per $1`);
+    reasoningChain.push(`  ${finalEV > this.minEV ? "✓ POSITIVE EV — value bet" : "✗ NOT profitable — skip"}`);
 
     // Step 5: Bet sizing
     let shouldBet = finalEV > this.minEV && opportunity.isValueBet;
@@ -365,27 +394,22 @@ export class PredictionAgent {
     console.log(`\nTop ${topMarkets.length} opportunities by EV:`);
     for (let i = 0; i < topMarkets.length; i++) {
       const m = topMarkets[i];
-      console.log(`  ${i + 1}. [EV: ${(m.ev * 100).toFixed(2)}%] ${m.title.substring(0, 60)}`);
+      const edge = m.probability - m.marketPrice;
+      console.log(`  ${i + 1}. [Edge: ${edge > 0 ? '+' : ''}${(edge * 100).toFixed(2)}pp | EV: ${(m.ev * 100).toFixed(2)}%] ${m.title.substring(0, 60)}`);
     }
 
     reasoning.push(`[RANK] Top ${topMarkets.length} opportunities selected by EV`);
 
-    // Step 3: Apply category diversification + confidence filter
+    // Step 3: Apply category diversification
     const categoryCount: Record<string, number> = {};
     const filteredTop: typeof topMarkets = [];
 
     for (const m of topMarkets) {
       const category = getCategory(m.title);
 
-      // Confidence filter: skip extreme longshots without strong conviction
-      if (!isConfidentBet(m.probability, m.marketPrice)) {
-        console.log(`  ⏭️  SKIP (low confidence for extreme longshot: ${(m.marketPrice * 100).toFixed(1)}%) — ${m.title.substring(0, 60)}`);
-        continue;
-      }
-
       // Category cap
       if ((categoryCount[category] ?? 0) >= MAX_BETS_PER_CATEGORY) {
-        console.log(`  ⏭️  SKIP (category ${category} sudah ${MAX_BETS_PER_CATEGORY} bets) — ${m.title.substring(0, 60)}`);
+        console.log(`  ⏭️  SKIP (category ${category} already ${MAX_BETS_PER_CATEGORY} bets) — ${m.title.substring(0, 60)}`);
         continue;
       }
 
