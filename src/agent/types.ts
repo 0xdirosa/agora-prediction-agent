@@ -14,6 +14,11 @@ export interface BetRecord {
   executed: boolean;
   txHash?: string;
   error?: string;
+  jobId?: string;
+  jobCreateTx?: string;
+  jobFundTx?: string;
+  jobSubmitTx?: string;
+  jobCompleteTx?: string;
 }
 
 export interface MarketOpportunity {

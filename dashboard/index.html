@@ -20,6 +20,7 @@
   --yellow:#eab308;
   --blue:#3b82f6;
   --purple:#a855f7;
+  --cyan:#06b6d4;
   --mono:'SF Mono','Fira Code','Consolas',monospace;
 }
 body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13px;line-height:1.5;overflow:hidden;height:100vh}
@@ -101,6 +102,8 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13
 .log-line.warn{color:var(--yellow)}
 .log-line.error{color:var(--red)}
 .log-line.bold{color:var(--text);font-weight:600}
+.job-link{font-size:9px;color:var(--cyan);cursor:pointer;text-decoration:none;padding:1px 4px;border:1px solid var(--cyan);border-radius:3px;margin-left:4px}
+.job-link:hover{background:var(--cyan);color:#000}
 
 /* ── Scroll ── */
 ::-webkit-scrollbar{width:3px}
@@ -333,12 +336,16 @@ function renderDecision(d){
   const title = escHtml(d.marketQuestion || 'Unknown').substring(0, 55);
   const sz = d.size || 0;
   const ts = new Date(d.timestamp).toLocaleTimeString();
+  const jobLink = d.jobId
+    ? `<a class="job-link" href="https://testnet.arcscan.app/address/0x0747EEf0706327138c69792bF28Cd525089e4583" target="_blank" title="Job #${d.jobId}">job #${d.jobId}</a>`
+    : '';
   return `<div class="decision">
     <span class="dir ${dirCls}">${d.direction}</span>
     <span class="ev-tag ${evCls}">${evPct}%</span>
     <span class="q" title="${escHtml(d.marketQuestion||'')}">${title}</span>
     <span class="bet-size">${sz > 0 ? '$'+sz.toFixed(2) : '—'}</span>
     <span class="ts">${ts}</span>
+    ${jobLink}
   </div>`;
 }
 

@@ -1,7 +1,9 @@
 import { fetchActiveMarkets } from "../markets/polymarketClient.js";
 import { calculateEV, kellyBetSize, isValueBet } from "../analysis/evCalculator.js";
 import { estimateProbability } from "../analysis/sentimentAnalyzer.js";
-import { initWallet, getUSDCBalance, transferAndWait } from "../wallet/circleWallet.js";
+import { initWallet, getUSDCBalance } from "../wallet/circleWallet.js";
+import { runPredictionJob, JOB_STATUS_NAMES } from "../jobs/erc8183Client.js";
+import { registerIdentity, hasIdentity, buildAgentMetadata } from "../jobs/agentIdentity.js";
 import type {
   MarketOpportunity,
   BetDecision,
@@ -9,6 +11,7 @@ import type {
   BetResult,
   CycleSummary,
 } from "./types.js";
+import { IDENTITY_REGISTRY } from "../arc/constants.js";
 
 const MAX_BETS_PER_CATEGORY = 2;
 const MIN_MARKET_PRICE = 0.08;
@@ -89,6 +92,10 @@ export class PredictionAgent {
     console.log(`[CONFIG] Mode: ${this.dryRun ? "DRY RUN (no real transfers)" : "LIVE (real transfers enabled)"}`);
     console.log(`[NETWORK] Chain: Arc Testnet (5042002)`);
     console.log(`[NETWORK] RPC: https://rpc.testnet.arc.network`);
+
+    if (!this.dryRun) {
+      await this.registerOnchainIdentity();
+    }
 
     this.initialized = true;
     console.log("[STATUS] PredictionAgent ready\n");
@@ -342,22 +349,33 @@ export class PredictionAgent {
 
     let txSucceeded = false;
     if (this.dryRun) {
-      console.log(`[EXECUTE] [DRY RUN] Would transfer $${decision.size.toFixed(2)} USDC from ${this.walletAddress}`);
-      console.log(`[EXECUTE] [DRY RUN] Skipping real transfer — dry run mode`);
+      console.log(`[EXECUTE] [DRY RUN] Would create ERC-8183 job for $${decision.size.toFixed(2)} USDC`);
+      console.log(`[EXECUTE] [DRY RUN] Skipping real onchain job — dry run mode`);
       record.txHash = "dry_run";
       txSucceeded = true;
     } else {
-      const destAddr = process.env.AGENT_TRANSFER_ADDRESS ?? this.walletAddress;
-      console.log(`[EXECUTE] [LIVE] Sending $${decision.size.toFixed(2)} USDC to ${destAddr}...`);
+      console.log(`[EXECUTE] [LIVE] Creating ERC-8183 prediction job...`);
       try {
-        const result = await transferAndWait(this.walletId, destAddr, decision.size);
-        record.txHash = result.txHash ?? "live_tx_sent";
-        console.log(`[EXECUTE] ✓ Transaction complete: ${result.txHash}`);
-        console.log(`[EXECUTE] ✓ Explorer: https://testnet.arcscan.app/tx/${result.txHash}`);
+        const jobResult = await runPredictionJob(this.walletId, this.walletAddress, {
+          marketQuestion: decision.marketQuestion,
+          direction: decision.direction,
+          probability: decision.predictedProbability,
+          betAmount: decision.size,
+        });
+
+        record.txHash = jobResult.completeTx || jobResult.submitTx;
+        record.jobId = jobResult.jobId.toString();
+        record.jobCreateTx = jobResult.createTx;
+        record.jobFundTx = jobResult.fundTx;
+        record.jobSubmitTx = jobResult.submitTx;
+        record.jobCompleteTx = jobResult.completeTx;
+
+        console.log(`[EXECUTE] ✓ Job ${jobResult.jobId} lifecycle complete`);
+        console.log(`[EXECUTE] ✓ Explorer: https://testnet.arcscan.app/address/0x0747EEf0706327138c69792bF28Cd525089e4583`);
         txSucceeded = true;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.error(`[EXECUTE] ✗ Transfer failed: ${msg}`);
+        console.error(`[EXECUTE] ✗ Job lifecycle failed: ${msg}`);
         record.error = msg;
       }
     }
@@ -368,7 +386,7 @@ export class PredictionAgent {
       console.log(`[EXECUTE] ✓ Bet recorded. Total bets placed: ${this.betsPlaced.length}`);
       console.log(`[EXECUTE] Remaining bankroll: $${this.bankroll.toFixed(2)} USDC`);
     } else {
-      console.log(`[EXECUTE] ✗ Bet skipped — transfer did not complete`);
+      console.log(`[EXECUTE] ✗ Bet skipped — job lifecycle did not complete`);
     }
 
     return {
@@ -583,6 +601,28 @@ export class PredictionAgent {
   private requireInit(): void {
     if (!this.initialized) {
       throw new Error("PredictionAgent not initialized. Call initialize() first.");
+    }
+  }
+
+  private async registerOnchainIdentity(): Promise<void> {
+    console.log("\n═══ Registering Onchain Identity (ERC-8004) ═══");
+    try {
+      const existingId = await hasIdentity(this.walletAddress);
+      if (existingId !== null) {
+        console.log(`[ERC-8004] Agent already registered — ID: ${existingId}`);
+        return;
+      }
+
+      const metadata = buildAgentMetadata(
+        "Agora Prediction Agent",
+        "Autonomous Polymarket prediction agent using Groq LLM probability estimation",
+      );
+      const result = await registerIdentity(this.walletId, this.walletAddress, metadata);
+      console.log(`[ERC-8004] Identity registered: ${result.txHash}`);
+      console.log(`[ERC-8004] Registry: https://testnet.arcscan.app/address/${IDENTITY_REGISTRY}`);
+    } catch (err) {
+      console.log(`[ERC-8004] Identity registration skipped: ${err instanceof Error ? err.message : "error"}`);
+      console.log("[ERC-8004] Agent will still function without onchain identity");
     }
   }
 
