@@ -82,11 +82,14 @@ app.get("/api/metrics", (_req, res) => {
   const totalEvCaptured = decisions.reduce((s, b) => s + b.ev * b.size, 0);
   const opportunitiesScanned = cycles.reduce((s, c) => s + c.marketsScanned, 0);
 
+  const bestEv = totalBets > 0 ? Math.max(...decisions.map(d => d.ev)) : 0;
+
   res.json({
     totalCycles: cycles.length,
     totalBetsPlaced: totalBets,
     totalWageredUsdc: totalWagered.toFixed(2),
     avgEvPercent: (avgEv * 100).toFixed(2),
+    bestEvPercent: (bestEv * 100).toFixed(2),
     totalEvCapturedUsdc: totalEvCaptured.toFixed(4),
     opportunitiesScanned,
     betsPerCycle: cycles.length > 0 ? (totalBets / cycles.length).toFixed(1) : "0",

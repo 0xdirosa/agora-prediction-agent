@@ -21,12 +21,11 @@ export function calculateEV(
     return 0;
   }
 
-  if (edge <= 0) return edge;
-
   const oddsIfWin = (1 / marketPrice) - 1;
   const ev = ourProbability * oddsIfWin - (1 - ourProbability);
+  const sign = ev >= 0 ? '+' : '';
 
-  console.log(`  [EV] price=${(marketPrice * 100).toFixed(1)}% ourProb=${(ourProbability * 100).toFixed(1)}% edge=+${(edge * 100).toFixed(2)}pp odds=${oddsIfWin.toFixed(2)}:1 → EV=+${(ev * 100).toFixed(2)}¢/¢`);
+  console.log(`  [EV] price=${(marketPrice * 100).toFixed(1)}% ourProb=${(ourProbability * 100).toFixed(1)}% edge=${edge > 0 ? '+' : ''}${(edge * 100).toFixed(2)}pp odds=${oddsIfWin.toFixed(2)}:1 → EV=${sign}${(ev * 100).toFixed(2)}¢/¢`);
 
   return ev;
 }
@@ -54,8 +53,8 @@ export function kellyBetSize(
   return Math.max(0, Math.round(betAmount * 100) / 100);
 }
 
-export function isValueBet(ev: number, _threshold = 0.0): boolean {
-  return ev > 0;
+export function isValueBet(ev: number, threshold = 0.0): boolean {
+  return ev > threshold;
 }
 
 if (process.argv[1]?.endsWith("evCalculator.ts")) {

@@ -129,6 +129,7 @@ export async function getBlockNumber(): Promise<bigint> {
 export async function getGasPrice(): Promise<bigint> {
   const conn = connectToArcTestnet();
   const gasPrice = await conn.publicClient.getGasPrice();
-  console.log(`[ArcClient] Current gas price: ${gasPrice} Gwei (${formatEther(gasPrice * 1_000_000_000n)} USDC)`);
+  const gasPriceGwei = Number(gasPrice) / 1e9;
+  console.log(`[ArcClient] Current gas price: ${gasPriceGwei.toFixed(2)} Gwei (${formatEther(gasPrice)} USDC)`);
   return gasPrice;
 }

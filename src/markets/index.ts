@@ -1,4 +1,3 @@
-export * from "./polymarket.js";
 export type {
   GammaMarket,
   MarketPrices,
@@ -10,4 +9,5 @@ export {
   fetchMarketById,
   getMarketPrices,
   fetchOrderbook,
+  getMidPrice,
 } from "./polymarketClient.js";

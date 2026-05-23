@@ -221,22 +221,24 @@ export class PredictionAgent {
     reasoningChain.push(`  Groq estimated probability: ${(opportunity.probability * 100).toFixed(1)}%`);
     reasoningChain.push(`  Groq reasoning: ${opportunity.reasoning}`);
 
-    // Step 3: Final probability
+    // Step 3: Final probability (convert to direction-specific probability)
     const finalProbability = opportunity.probability;
-    const edgePp = finalProbability - (direction === "YES" ? yesPrice : noPrice);
+    const mktPrice = direction === "YES" ? yesPrice : noPrice;
+    const betProb = direction === "YES" ? finalProbability : 1 - finalProbability;
+    const edgePp = betProb - mktPrice;
     reasoningChain.push(`\nStep 3 — Final Probability Estimate:`);
-    reasoningChain.push(`  Probability: ${(finalProbability * 100).toFixed(1)}%`);
-    reasoningChain.push(`  Market price (${direction === "YES" ? "YES" : "NO"}): ${((direction === "YES" ? yesPrice : noPrice) * 100).toFixed(1)}%`);
+    reasoningChain.push(`  Groq YES estimate: ${(finalProbability * 100).toFixed(1)}%`);
+    reasoningChain.push(`  ${direction} probability: ${(betProb * 100).toFixed(1)}%`);
+    reasoningChain.push(`  Market price (${direction}): ${(mktPrice * 100).toFixed(1)}%`);
     reasoningChain.push(`  Edge: ${edgePp > 0 ? '+' : ''}${(edgePp * 100).toFixed(2)}pp`);
 
-    const finalEV = calculateEV(finalProbability, direction === "YES" ? yesPrice : noPrice);
-    const mktPrice = direction === "YES" ? yesPrice : noPrice;
+    const finalEV = calculateEV(betProb, mktPrice);
     const oddsIfWin = (1 / mktPrice) - 1;
     reasoningChain.push(`\nStep 4 — EV Calculation:`);
     reasoningChain.push(`  Direction: ${direction} (market price ${(mktPrice * 100).toFixed(1)}%)`);
     reasoningChain.push(`  Odds: ${oddsIfWin.toFixed(2)}:1`);
     reasoningChain.push(`  EV per $1 bet: ${finalEV > 0 ? '+' : ''}${(finalEV * 100).toFixed(2)}%`);
-    reasoningChain.push(`  EV threshold: > $0.00 per $1`);
+    reasoningChain.push(`  EV threshold: ${(this.minEV * 100).toFixed(1)}%`);
     reasoningChain.push(`  ${finalEV > this.minEV ? "✓ POSITIVE EV — value bet" : "✗ NOT profitable — skip"}`);
 
     // Step 5: Bet sizing
@@ -245,8 +247,8 @@ export class PredictionAgent {
 
     if (shouldBet) {
       reasoningChain.push(`\nStep 6 — Kelly Bet Sizing:`);
-      const kellyPrice = direction === "YES" ? yesPrice : noPrice;
-      const rawKellySize = kellyBetSize(this.bankroll, finalProbability, kellyPrice);
+      const kellyPrice = mktPrice;
+      const rawKellySize = kellyBetSize(this.bankroll, betProb, kellyPrice);
       reasoningChain.push(`  Half-Kelly bet: f* = ${((rawKellySize / this.bankroll) * 100).toFixed(2)}% of bankroll`);
       reasoningChain.push(`  Raw Kelly amount: $${rawKellySize.toFixed(2)}`);
 

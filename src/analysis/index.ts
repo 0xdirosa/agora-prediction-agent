@@ -1,10 +1,8 @@
-export * from "./ev-calculator.js";
-export type {
-  BetOpportunity as BetOpp,
-} from "./ev-calculator.js";
 export {
   calculateImpliedProbability,
+  calculateEV,
   kellyBetSize,
   isValueBet,
+  isConfidentBet,
 } from "./evCalculator.js";
 export * from "./sentimentAnalyzer.js";
