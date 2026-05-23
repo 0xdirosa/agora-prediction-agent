@@ -7,26 +7,29 @@ async function analyzeMarketWithGroq(
   marketPrice: number,
 ): Promise<{ ourProbability: number; reasoning: string }> {
   const prompt = `
-Kamu adalah analyst prediction market yang expert.
+You are a prediction market analyst.
 
-Market question: "${marketQuestion}"
-Current market price (implied probability): ${(marketPrice * 100).toFixed(1)}%
+Market: "${marketQuestion}"
+Current market price: ${(marketPrice * 100).toFixed(2)}%
 
-Tugasmu:
-1. Analisis apakah market price ini wajar berdasarkan pengetahuanmu
-2. Estimasi probabilitas menurutmu (0.0 - 1.0)
-3. Beri reasoning singkat (max 2 kalimat)
+The market price already reflects crowd wisdom.
+Your job: decide if this market is slightly mispriced.
 
-PENTING:
-- Jangan terlalu jauh dari market price (max ±15 percentage points)
-- Jika tidak punya informasi relevan, kembalikan market price apa adanya
-- Pasar Polymarket relatif efisien
-
-Jawab HANYA dalam format JSON:
+Respond ONLY with valid JSON, no other text:
 {
-  "ourProbability": 0.XX,
-  "reasoning": "alasan singkat"
+  "adjustment": <number between -0.05 and 0.05>,
+  "reasoning": "<one sentence max>"
 }
+
+Rules:
+- adjustment = 0.0 means you agree with market price
+- adjustment = +0.02 means you think true probability
+  is 2 percentage points HIGHER than market price
+- adjustment = -0.02 means 2pp LOWER
+- Maximum adjustment: ±0.05 (5 percentage points)
+- For sports longshots under 2%: adjustment range is
+  only -0.01 to +0.01
+- If you have no specific knowledge: use 0.0
 `;
 
   const response = await groq.chat.completions.create({
@@ -41,14 +44,17 @@ Jawab HANYA dalam format JSON:
     response.choices[0]?.message?.content ?? "{}",
   );
 
-  let rawProb = result.ourProbability ?? marketPrice;
-  const absMin = Math.max(0.001, marketPrice - 0.15);
-  const absMax = Math.min(0.999, marketPrice + 0.15);
-  const relMin = marketPrice / 5;
-  const relMax = marketPrice * 5;
-  const effectiveMin = Math.max(absMin, relMin);
-  const effectiveMax = Math.min(absMax, relMax);
-  rawProb = Math.max(effectiveMin, Math.min(effectiveMax, rawProb));
+  const adjustment = result.adjustment ?? 0;
+
+  let rawProb = marketPrice + adjustment;
+  rawProb = Math.max(0.001, Math.min(0.999, rawProb));
+
+  console.log('[Groq adjustment]', {
+    question: marketQuestion.substring(0, 60),
+    marketPrice: +(marketPrice * 100).toFixed(2),
+    adjustment: +adjustment.toFixed(4),
+    ourProb: +(rawProb * 100).toFixed(2),
+  });
 
   return {
     ourProbability: rawProb,
@@ -69,7 +75,7 @@ export async function estimateProbability(
 
   try {
     const result = await analyzeMarketWithGroq(marketQuestion, marketPrice);
-    console.log(`  [Groq] probability=${(result.ourProbability * 100).toFixed(1)}%, reasoning="${result.reasoning}"`);
+    console.log(`  [Groq] prob=${(result.ourProbability * 100).toFixed(1)}%, reasoning="${result.reasoning}"`);
     return {
       probability: result.ourProbability,
       reasoning: result.reasoning,

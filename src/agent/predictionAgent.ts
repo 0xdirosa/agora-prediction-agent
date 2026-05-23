@@ -1,5 +1,5 @@
 import { fetchActiveMarkets } from "../markets/polymarketClient.js";
-import { calculateEV, kellyBetSize, isValueBet } from "../analysis/evCalculator.js";
+import { calculateEV, kellyBetSize, isValueBet, isConfidentBet } from "../analysis/evCalculator.js";
 import { estimateProbability } from "../analysis/sentimentAnalyzer.js";
 import { initWallet, getUSDCBalance } from "../wallet/circleWallet.js";
 import type {
@@ -9,6 +9,19 @@ import type {
   BetResult,
   CycleSummary,
 } from "./types.js";
+
+const MAX_BETS_PER_CATEGORY = 2;
+
+function getCategory(question: string): string {
+  const q = question.toLowerCase();
+  if (q.includes("world cup") || q.includes("fifa")) return "sports-worldcup";
+  if (q.includes("nba") || q.includes("nfl") || q.includes("nhl") || q.includes("mlb") || q.includes("ncaa")) return "sports-other";
+  if (q.includes("fed") || q.includes("rate") || q.includes("inflation") || q.includes("cpi") || q.includes("gdp")) return "macro";
+  if (q.includes("election") || q.includes("president") || q.includes("senate") || q.includes("congress")) return "politics";
+  if (q.includes("bitcoin") || q.includes("crypto") || q.includes("eth") || q.includes("solana")) return "crypto";
+  if (q.includes("trump") || q.includes("biden") || q.includes("elon") || q.includes("musk")) return "politics";
+  return "other";
+}
 
 export class PredictionAgent {
   private walletId: string;
@@ -357,27 +370,52 @@ export class PredictionAgent {
 
     reasoning.push(`[RANK] Top ${topMarkets.length} opportunities selected by EV`);
 
-    // Step 3: Evaluate each
+    // Step 3: Apply category diversification + confidence filter
+    const categoryCount: Record<string, number> = {};
+    const filteredTop: typeof topMarkets = [];
+
+    for (const m of topMarkets) {
+      const category = getCategory(m.title);
+
+      // Confidence filter: skip extreme longshots without strong conviction
+      if (!isConfidentBet(m.probability, m.marketPrice)) {
+        console.log(`  ⏭️  SKIP (low confidence for extreme longshot: ${(m.marketPrice * 100).toFixed(1)}%) — ${m.title.substring(0, 60)}`);
+        continue;
+      }
+
+      // Category cap
+      if ((categoryCount[category] ?? 0) >= MAX_BETS_PER_CATEGORY) {
+        console.log(`  ⏭️  SKIP (category ${category} sudah ${MAX_BETS_PER_CATEGORY} bets) — ${m.title.substring(0, 60)}`);
+        continue;
+      }
+
+      categoryCount[category] = (categoryCount[category] ?? 0) + 1;
+      filteredTop.push(m);
+    }
+
+    reasoning.push(`[FILTER] After category diversification: ${filteredTop.length} markets remain`);
+
+    // Step 4: Evaluate each
     let betsExecuted = 0;
     let totalBetVolume = 0;
 
-    for (let i = 0; i < topMarkets.length; i++) {
-      console.log(`\n--- Evaluating opportunity ${i + 1}/${topMarkets.length} ---`);
+    for (let i = 0; i < filteredTop.length; i++) {
+      console.log(`\n--- Evaluating opportunity ${i + 1}/${filteredTop.length} ---`);
       let decision: BetDecision;
       try {
-        decision = await this.evaluateOpportunity(topMarkets[i]);
+        decision = await this.evaluateOpportunity(filteredTop[i]);
       } catch (err) {
-        const msg = `Evaluation failed for ${topMarkets[i].slug}: ${err instanceof Error ? err.message : String(err)}`;
+        const msg = `Evaluation failed for ${filteredTop[i].slug}: ${err instanceof Error ? err.message : String(err)}`;
         console.error(`[ERROR] ${msg}`);
         errors.push(msg);
         continue;
       }
 
-      reasoning.push(`[EVAL ${i + 1}] ${topMarkets[i].title}`);
+      reasoning.push(`[EVAL ${i + 1}] ${filteredTop[i].title}`);
       reasoning.push(`[EVAL ${i + 1}] Decision: ${decision.shouldBet ? "BET" : "PASS"} | Direction: ${decision.direction} | Size: $${decision.size.toFixed(2)}`);
       reasoning.push(`[EVAL ${i + 1}] EV: ${(decision.ev * 100).toFixed(2)}% | Kelly: ${(decision.kellyFraction * 100).toFixed(2)}%`);
 
-      // Step 4: Execute
+      // Step 5: Execute
       if (decision.shouldBet) {
         try {
           const result = await this.executeBet(decision);
@@ -403,7 +441,7 @@ export class PredictionAgent {
       marketsScanned: opportunities.length,
       opportunitiesFound: opportunities.filter((o) => o.isValueBet).length,
       opportunitiesWithEV: withEV.length,
-      betsEvaluated: Math.min(topMarkets.length, 3),
+      betsEvaluated: filteredTop.length,
       betsExecuted,
       totalBetVolume,
       reasoning,

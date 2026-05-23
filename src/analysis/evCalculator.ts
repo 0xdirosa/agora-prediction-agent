@@ -5,15 +5,23 @@ export function calculateImpliedProbability(price: number): number {
   return price;
 }
 
+const MAX_EV = 2.0; // 200% cap — prevents extreme longshot overestimation
+
 export function calculateEV(
   ourProbability: number,
   marketPrice: number,
 ): number {
   if (ourProbability <= 0 || ourProbability >= 1) return 0;
   if (marketPrice <= 0 || marketPrice >= 1) return 0;
-  const ev = (ourProbability - marketPrice) / marketPrice;
-  console.log(`  [EV_DEBUG] ourProb=${ourProbability.toFixed(4)}, marketPrice=${marketPrice.toFixed(4)}, ev=${(ev * 100).toFixed(2)}%`);
+  const ev = Math.min(MAX_EV, (ourProbability - marketPrice) / marketPrice);
+  console.log(`  [EV_DEBUG] ourProb=${ourProbability.toFixed(4)}, marketPrice=${marketPrice.toFixed(4)}, rawEv=${((ourProbability - marketPrice) / marketPrice * 100).toFixed(2)}%, cappedEv=${(ev * 100).toFixed(2)}%`);
   return ev;
+}
+
+export function isConfidentBet(ourProbability: number, marketPrice: number): boolean {
+  // For extreme longshots (market < 5%), require probability to be at least 2× market price
+  if (marketPrice < 0.05 && ourProbability < marketPrice * 2) return false;
+  return true;
 }
 
 export function kellyBetSize(
