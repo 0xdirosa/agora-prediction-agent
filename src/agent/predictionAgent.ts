@@ -112,6 +112,12 @@ export class PredictionAgent {
       await this.registerOnchainIdentity();
     }
 
+    // Always set agentId from env for resolution tracking
+    if (!this.agentId && process.env.ARC_AGENT_ID) {
+      this.agentId = process.env.ARC_AGENT_ID;
+      console.log(`[CONFIG] Agent ID: ${this.agentId} (from env)`);
+    }
+
     this.initialized = true;
     console.log("[STATUS] PredictionAgent ready\n");
   }
@@ -646,7 +652,7 @@ export class PredictionAgent {
   }
 
   async resolvePastMarkets(): Promise<void> {
-    if (this.dryRun || !this.agentId || !this.validatorAddress) {
+    if (!this.agentId || !this.validatorAddress) {
       return;
     }
     const results = await resolveMarkets(

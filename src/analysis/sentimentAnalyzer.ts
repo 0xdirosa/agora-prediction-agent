@@ -13,17 +13,18 @@ Current market price: ${(marketPrice * 100).toFixed(1)}%
 
 Think step by step:
 1. What is this market asking?
-2. Based on your knowledge, is the current price too high, too low, or about right?
+2. Could the current price be too LOW (making YES a value bet) or too HIGH (making NO a value bet)?
 3. What specific factors support a higher or lower probability?
 4. Estimate the TRUE probability as a single number.
 
 Rules:
+- Consider BOTH directions: a price below 30% could be too low (YES value) OR too high (NO value)
 - If you AGREE with the market or have NO specific knowledge: 
   return EXACTLY ${marketPrice.toFixed(4)} (the market price)
 - If you DISAGREE: maximum deviation is ±10 percentage points
   (e.g., from 50% to max 60% or min 40%)
 - Be precise — return probabilities like 0.43, 0.51, 0.62 not 0.5, 0.55
-- For sports/pop culture markets: trust the market more (smaller deviations)
+- Trust the market more for sports/pop culture markets
 
 Respond with valid JSON ONLY:
 {
