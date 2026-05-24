@@ -645,6 +645,10 @@ export class PredictionAgent {
     return this._running;
   }
 
+  isDryRun(): boolean {
+    return this.dryRun;
+  }
+
   private requireInit(): void {
     if (!this.initialized) {
       throw new Error("PredictionAgent not initialized. Call initialize() first.");

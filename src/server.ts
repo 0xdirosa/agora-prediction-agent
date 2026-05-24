@@ -34,8 +34,10 @@ console.log(`[Server] Loaded ${decisions.length} bets, ${cycles.length} cycles f
 
 // GET /api/status — agent running status + cycle info
 app.get("/api/status", (_req, res) => {
+  const mode = agent ? (agent.isDryRun() ? "dry_run" : "live") : "stopped";
   res.json({
     status: agent?.isRunning() ? "running" : agent ? "paused" : "stopped",
+    mode,
     initialized: agent !== null,
     uptime: serverStartTime,
     cyclesCompleted: cycles.length,

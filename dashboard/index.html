@@ -129,6 +129,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13
       <span class="status-dot stopped" id="statusDot"></span>
       <span id="statusText">STOPPED</span>
     </div>
+    <span id="modeBadge" style="font-size:8px;padding:1px 5px;border-radius:3px;text-transform:uppercase;letter-spacing:.5px;border:1px solid var(--yellow);color:var(--yellow)">DRY RUN</span>
   </div>
   <div class="topbar-right">
     <button class="btn btn-cycle" id="btnCycle">▶ Cycle</button>
@@ -274,6 +275,19 @@ function renderStatus(s){
   const txt = document.getElementById('statusText');
   dot.className = 'status-dot ' + s.status;
   txt.textContent = s.status.toUpperCase();
+
+  // Mode badge
+  const modeEl = document.getElementById('modeBadge');
+  if(s.mode === 'live'){
+    modeEl.textContent = 'LIVE';
+    modeEl.style.borderColor = 'var(--green)';
+    modeEl.style.color = 'var(--green)';
+  } else {
+    modeEl.textContent = 'DRY RUN';
+    modeEl.style.borderColor = 'var(--yellow)';
+    modeEl.style.color = 'var(--yellow)';
+  }
+
   document.getElementById('cyclesCompleted').textContent = (s.cyclesCompleted||0) + ' cycles';
 
   const bar = document.getElementById('cycleBar');
@@ -310,7 +324,9 @@ function renderReputation(r){
     el.style.color = r.score >= 50 ? 'var(--green)' : r.score > 0 ? 'var(--yellow)' : 'var(--red)';
   } else {
     el.textContent = '—';
-    det.textContent = r.agentId ? 'agent #' + r.agentId : 'not registered';
+    det.textContent = r.agentId
+      ? 'agent #' + r.agentId + ' | score view unavailable'
+      : 'not registered';
   }
 }
 
@@ -377,7 +393,7 @@ function renderDecision(d){
   const sz = d.size || 0;
   const ts = new Date(d.timestamp).toLocaleTimeString();
   const jobLink = d.jobId
-    ? `<a class="job-link" href="https://testnet.arcscan.app/address/0x0747EEf0706327138c69792bF28Cd525089e4583" target="_blank" title="Job #${d.jobId}">job #${d.jobId}</a>`
+    ? `<a class="job-link" href="https://testnet.arcscan.app/address/0x0747EEf0706327138c69792bF28Cd525089e4583" target="_blank" title="Job #${d.jobId}">ERC-8183</a>`
     : '';
   const resolvedTag = d.resolved
     ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:${d.resolvedCorrectly ? 'var(--green-bg)' : 'var(--red-bg)'};color:${d.resolvedCorrectly ? 'var(--green)' : 'var(--red)'}">${d.resolvedCorrectly ? '✓' : '✗'}</span>`
