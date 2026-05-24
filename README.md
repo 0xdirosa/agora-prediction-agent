@@ -155,19 +155,19 @@ An autonomous AI agent that continuously monitors **Polymarket** for mispriced p
 
 | Metric | Value |
 |--------|-------|
-| Total autonomous cycles | 9+ |
-| Markets scanned | 370+ |
-| Bets placed | 51+ |
-| Total wagered | ~$220 USDC |
-| Avg EV per bet | ~51% |
+| Total autonomous cycles | 10 |
+| Markets scanned | 472 |
+| Bets placed | 51 |
+| Total wagered | ~$236 USDC |
+| Avg EV per bet | ~52% |
 | Best EV captured | ~95% |
-| ERC-8183 jobs created | 44+ (IDs: 43180, 43183, 43192, 43499, 43644, 43645, 43647, 43712, 43714, 43726, 43730, ...) |
+| ERC-8183 jobs created | 45+ (live data on dashboard) |
 | ERC-8004 reputation feedbacks | 9+ (score=100 each, from validator wallet) |
 | ERC-8004 validation requests | 6+ (all approved with response=100) |
 | Market types covered | Sports (NBA, NHL, FIFA), Legal (Harvey Weinstein sentence), Crypto (MegaETH airdrop, Bitcoin price) |
 | Directional bets | Both YES and NO directions |
 | Gas | Fully sponsored by Circle Gas Station ($0 gas cost) |
-| Dashboard | [http://18.140.114.181:3000](http://18.140.114.181:3000) |
+| Dashboard | [http://18.140.114.181:3000](http://18.140.114.181:3000) — metrics update every 5 seconds via live API |
 
 ## Probability Estimation Prompt
 
