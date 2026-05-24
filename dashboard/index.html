@@ -209,7 +209,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13
       </div>
     </div>
     <div class="log-stream" id="logStream">
-      <div class="log-line" style="color:var(--muted)">Waiting...</div>
+      <div class="log-line muted" style="color:var(--muted)">Waiting...</div>
     </div>
   </div>
 </div>
@@ -245,7 +245,7 @@ function addLog(msg, lv='info'){
 }
 
 function clearLogs(){
-  document.getElementById('logStream').innerHTML = '<div class="log-line" style="color:var(--muted)">Cleared</div>';
+  document.getElementById('logStream').innerHTML = '<div class="log-line muted" style="color:var(--muted)">Cleared</div>';
 }
 
 //── Fetch ──
@@ -345,7 +345,7 @@ function renderMetrics(m){
     accEl.textContent = '—';
     accEl.style.color = 'var(--muted)';
   }
-  accDet.textContent = (m.resolved||0) + '/' + (m.correct||0) + ' correct';
+  accDet.textContent = (m.correct||0) + '/' + (m.resolved||0) + ' correct';
 }
 
 function renderDecisions(d){
