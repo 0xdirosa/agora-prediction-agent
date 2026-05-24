@@ -394,10 +394,10 @@ function renderDecision(d){
   const sz = d.size || 0;
   const ts = new Date(d.timestamp).toLocaleTimeString();
   const jobLink = d.jobId
-    ? `<a class="job-link" href="https://testnet.arcscan.app/address/0x0747EEf0706327138c69792bF28Cd525089e4583" target="_blank" title="Job #${d.jobId}">ERC-8183</a>`
+    ? `<a class="job-link" href="https://testnet.arcscan.app/tx/${d.jobCreateTx || d.txHash}" target="_blank" title="Job #${d.jobId} create tx">ERC-8183</a>`
     : '';
   const repLink = d.jobId
-    ? `<a class="job-link" href="https://testnet.arcscan.app/address/0x8004B663056A597Dffe9eCcC1965A193B7388713" target="_blank" title="Reputation feedback" style="border-color:var(--purple);color:var(--purple)">ERC-8004</a>`
+    ? `<a class="job-link" href="https://testnet.arcscan.app/address/0x8004B663056A597Dffe9eCcC1965A193B7388713?tab=txs" target="_blank" title="ERC-8004 ReputationRegistry transactions" style="border-color:var(--purple);color:var(--purple)">ERC-8004</a>`
     : '';
   const resolvedTag = d.resolved
     ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:${d.resolvedCorrectly ? 'var(--green-bg)' : 'var(--red-bg)'};color:${d.resolvedCorrectly ? 'var(--green)' : 'var(--red)'}">${d.resolvedCorrectly ? '✓' : '✗'}</span>`
