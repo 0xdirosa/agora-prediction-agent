@@ -146,7 +146,6 @@ An autonomous AI agent that continuously monitors **Polymarket** for mispriced p
 | **Agent ID** | #19687 |
 | **Owner Wallet** | `0x9f50195b110d65737e82d089da0cd32590820ad5` |
 | **Validator Wallet** | `0x2762e2271d6f3626c95af8be5c5785cf51583681` |
-| **Wallet Set ID** | `REMOVED` |
 | **Wallet Type** | SCA (Smart Contract Account), 2-of-2 in same wallet set |
 
 ## Results (Live Testnet)
