@@ -24,6 +24,8 @@ An autonomous AI agent that continuously monitors **Polymarket** for mispriced p
 
 ## Architecture
 
+<div align="center">
+
 ```
                           Polymarket Gamma API
                                 │ (fetch top 50 markets)
@@ -88,6 +90,8 @@ An autonomous AI agent that continuously monitors **Polymarket** for mispriced p
         │  100 decisions · explorer links · badges  │
         └──────────────────────────────────────────┘
 ```
+
+</div>
 
 ## Key Features
 
