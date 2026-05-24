@@ -38,7 +38,7 @@ app.get("/api/status", (_req, res) => {
   const mode = agent ? (agent.isDryRun() ? "dry_run" : "live") : "stopped";
   const isRunning = agent?.isRunning() ?? false;
   res.json({
-    status: isRunning ? "running" : agent ? "paused" : "stopped",
+    status: isRunning ? "running" : agent ? "idle" : "stopped",
     mode,
     initialized: agent !== null,
     uptime: serverStartTime,
