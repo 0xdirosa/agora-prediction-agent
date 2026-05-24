@@ -14,7 +14,7 @@ An autonomous AI agent that continuously monitors **Polymarket** for mispriced p
 </p>
 
 <p align="center">
-  <a href="https://testnet.arcscan.app/token/0x8004A818BFB912233c491871b3d84c89A494BD9e/instance/19687"><img src="https://img.shields.io/badge/ERC-8004-19687-a855f7" alt="Agent ID"></a>
+  <a href="https://testnet.arcscan.app/token/0x8004A818BFB912233c491871b3d84c89A494BD9e/instance/19687"><img src="https://img.shields.io/badge/Agent%20%2319687-ERC--8004-a855f7" alt="Agent ID"></a>
   <a href="https://testnet.arcscan.app"><img src="https://img.shields.io/badge/Arc-Testnet-06b6d4" alt="Arc Testnet"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-606080" alt="License"></a>
   <a href="https://github.com/0xdirosa/agora-prediction-agent"><img src="https://img.shields.io/github/stars/0xdirosa/agora-prediction-agent?color=606080" alt="GitHub"></a>
