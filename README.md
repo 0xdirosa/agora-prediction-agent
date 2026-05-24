@@ -203,7 +203,7 @@ isValueBet = EV > 0.10 (10%)
 
 ### Prerequisites
 
-- **Node.js** 18+
+- **Node.js** 22+
 - **Circle API Key** — from [Circle Developer Console](https://console.circle.com) (Keys → Create API Key)
 - **Circle Entity Secret** — register via [Circle docs](https://developers.circle.com/wallets/dev-controlled/register-entity-secret)
 - **Groq API Key** — from [Groq Console](https://console.groq.com)
