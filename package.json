@@ -6,8 +6,6 @@
   "scripts": {
     "start": "tsx src/index.ts",
     "dev": "tsx --watch src/index.ts",
-    "create-wallet": "tsx src/wallet/create-wallet.ts",
-    "check-balance": "tsx src/wallet/check-balance.ts",
     "server": "tsx src/server.ts",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
