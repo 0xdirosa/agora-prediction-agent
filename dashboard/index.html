@@ -50,7 +50,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13
 .layout>*{min-height:0}
 
 /* ── Metric row ── */
-.metrics{grid-column:1/2;display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--border)}
+.metrics{grid-column:1/2;display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border)}
 .metric{background:var(--bg2);padding:10px 14px}
 .metric-label{font-size:9px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:2px}
 .metric-value{font-size:18px;font-weight:700}
@@ -116,6 +116,9 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13
   .sidebar{grid-column:1/2;grid-row:4/5;border-left:none;border-top:1px solid var(--border);max-height:200px}
   .metrics{grid-template-columns:repeat(3,1fr)}
 }
+@media(max-width:600px){
+  .metrics{grid-template-columns:repeat(2,1fr)}
+}
 </style>
 </head>
 <body>
@@ -153,6 +156,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13
       <div class="metric-sub" id="bestEv">best: —</div>
     </div>
     <div class="metric">
+      <div class="metric-label">Accuracy</div>
+      <div class="metric-value" id="accuracyRate" style="color:var(--muted)">—</div>
+      <div class="metric-sub" id="accuracyDetail">0 resolved</div>
+    </div>
+    <div class="metric">
       <div class="metric-label">Scanned</div>
       <div class="metric-value yellow" id="marketsScanned">0</div>
       <div class="metric-sub" id="cyclesCompleted">0 cycles</div>
@@ -161,6 +169,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:13
       <div class="metric-label">Block</div>
       <div class="metric-value" style="color:var(--muted);font-size:14px" id="blockNumber">—</div>
       <div class="metric-sub" id="networkName">Arc Testnet</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Reputation</div>
+      <div class="metric-value" style="color:var(--purple);font-size:18px" id="reputationScore">—</div>
+      <div class="metric-sub" id="reputationDetail">agent #—</div>
     </div>
   </div>
 
@@ -237,16 +250,18 @@ function clearLogs(){
 
 //── Fetch ──
 async function refreshAll(){
-  const [s,w,m,d] = await Promise.all([
+  const [s,w,m,d,r] = await Promise.all([
     fetchJSON(API+'/status'),
     fetchJSON(API+'/wallet'),
     fetchJSON(API+'/metrics'),
     fetchJSON(API+'/decisions'),
+    fetchJSON(API+'/reputation'),
   ]);
   if(s) renderStatus(s);
   if(w) renderWallet(w);
   if(m) renderMetrics(m);
   if(d) renderDecisions(d);
+  if(r) renderReputation(r);
 }
 
 async function fetchJSON(url){
@@ -285,6 +300,20 @@ function renderWallet(w){
   document.getElementById('networkName').textContent = 'Arc Testnet';
 }
 
+function renderReputation(r){
+  if(!r) return;
+  const el = document.getElementById('reputationScore');
+  const det = document.getElementById('reputationDetail');
+  if(r.agentId && r.score !== null && r.score !== undefined){
+    el.textContent = r.score;
+    det.textContent = 'agent #' + r.agentId + ' | ' + (r.feedbackCount||0) + ' feedbacks';
+    el.style.color = r.score >= 50 ? 'var(--green)' : r.score > 0 ? 'var(--yellow)' : 'var(--red)';
+  } else {
+    el.textContent = '—';
+    det.textContent = r.agentId ? 'agent #' + r.agentId : 'not registered';
+  }
+}
+
 function renderMetrics(m){
   if(!m) return;
   document.getElementById('bankroll').textContent = '$' + (m.bankrollRemaining||'0.00');
@@ -306,6 +335,17 @@ function renderMetrics(m){
   } else {
     best.textContent = 'best: —';
   }
+
+  const accEl = document.getElementById('accuracyRate');
+  const accDet = document.getElementById('accuracyDetail');
+  if(m.accuracyRate && m.accuracyRate !== 'N/A'){
+    accEl.textContent = m.accuracyRate;
+    accEl.style.color = parseFloat(m.accuracyRate) >= 50 ? 'var(--green)' : 'var(--red)';
+  } else {
+    accEl.textContent = '—';
+    accEl.style.color = 'var(--muted)';
+  }
+  accDet.textContent = (m.resolved||0) + '/' + (m.correct||0) + ' correct';
 }
 
 function renderDecisions(d){
@@ -339,6 +379,9 @@ function renderDecision(d){
   const jobLink = d.jobId
     ? `<a class="job-link" href="https://testnet.arcscan.app/address/0x0747EEf0706327138c69792bF28Cd525089e4583" target="_blank" title="Job #${d.jobId}">job #${d.jobId}</a>`
     : '';
+  const resolvedTag = d.resolved
+    ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:${d.resolvedCorrectly ? 'var(--green-bg)' : 'var(--red-bg)'};color:${d.resolvedCorrectly ? 'var(--green)' : 'var(--red)'}">${d.resolvedCorrectly ? '✓' : '✗'}</span>`
+    : '';
   return `<div class="decision">
     <span class="dir ${dirCls}">${d.direction}</span>
     <span class="ev-tag ${evCls}">${evPct}%</span>
@@ -346,6 +389,7 @@ function renderDecision(d){
     <span class="bet-size">${sz > 0 ? '$'+sz.toFixed(2) : '—'}</span>
     <span class="ts">${ts}</span>
     ${jobLink}
+    ${resolvedTag}
   </div>`;
 }
 

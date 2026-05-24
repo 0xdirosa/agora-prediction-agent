@@ -1,0 +1,32 @@
+[
+  {
+    "timestamp": "2026-05-24T06:48:06.758Z",
+    "marketsScanned": 22,
+    "opportunitiesFound": 10,
+    "opportunitiesWithEV": 10,
+    "betsEvaluated": 3,
+    "betsExecuted": 3,
+    "totalBetVolume": 17.91,
+    "reasoning": [
+      "[CYCLE] Starting analysis cycle at 2026-05-24T06:48:06.758Z",
+      "[CYCLE] Bankroll: $100.00",
+      "[SCAN] Scanned 22 markets",
+      "[FILTER] 10 markets with EV > 10.0%",
+      "[RANK] Top 3 opportunities selected by EV",
+      "[FILTER] After category diversification: 3 markets remain",
+      "[EVAL 1] Will MegaETH perform an airdrop by June 30? ",
+      "[EVAL 1] Decision: BET | Direction: YES | Size: $5.79",
+      "[EVAL 1] EV: 70.82% | Kelly: 5.79%",
+      "[EXECUTE 1] ✓ Bet executed: $5.79 on YES",
+      "[EVAL 2] Will France win the 2026 FIFA World Cup?",
+      "[EVAL 2] Decision: BET | Direction: YES | Size: $5.73",
+      "[EVAL 2] EV: 56.34% | Kelly: 6.08%",
+      "[EXECUTE 2] ✓ Bet executed: $5.73 on YES",
+      "[EVAL 3] Will the Vegas Golden Knights win the 2026 NHL Stanley Cup?",
+      "[EVAL 3] Decision: BET | Direction: YES | Size: $6.39",
+      "[EVAL 3] EV: 32.52% | Kelly: 7.22%",
+      "[EXECUTE 3] ✓ Bet executed: $6.39 on YES"
+    ],
+    "errors": []
+  }
+]

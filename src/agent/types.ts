@@ -19,6 +19,10 @@ export interface BetRecord {
   jobFundTx?: string;
   jobSubmitTx?: string;
   jobCompleteTx?: string;
+  resolved?: boolean;
+  resolvedCorrectly?: boolean;
+  resolutionScore?: number;
+  resolutionTxHash?: string;
 }
 
 export interface MarketOpportunity {

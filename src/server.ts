@@ -4,6 +4,9 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { PredictionAgent } from "./agent/predictionAgent.js";
 import { getArcBalance, getBlockNumber, getStatus } from "./arc/arcClient.js";
+import { getAgentScore, getFeedbackCount } from "./jobs/reputationClient.js";
+import { getAccuracy } from "./jobs/marketResolver.js";
+import { loadBets, loadCycles } from "./jobs/persistence.js";
 import { captureConsole, restoreConsole, getLogHistory, onLog } from "./log-stream.js";
 import type { BetRecord, CycleSummary } from "./agent/types.js";
 import type { LogEntry } from "./log-stream.js";
@@ -21,9 +24,11 @@ app.use(express.static(path.resolve(__dirname, "../dashboard")));
 
 // ── Agent state ──
 let agent: PredictionAgent | null = null;
-let decisions: BetRecord[] = [];
-let cycles: CycleSummary[] = [];
+let decisions: BetRecord[] = loadBets();
+let cycles: CycleSummary[] = loadCycles();
 let serverStartTime = new Date().toISOString();
+
+console.log(`[Server] Loaded ${decisions.length} bets, ${cycles.length} cycles from disk`);
 
 // ── API Routes ──
 
@@ -83,6 +88,8 @@ app.get("/api/metrics", (_req, res) => {
   const opportunitiesScanned = cycles.reduce((s, c) => s + c.marketsScanned, 0);
 
   const bestEv = totalBets > 0 ? Math.max(...decisions.map(d => d.ev)) : 0;
+  const acc = getAccuracy(decisions);
+  const accuracyRate = acc.accuracy !== null ? (acc.accuracy * 100).toFixed(1) + "%" : "N/A";
 
   res.json({
     totalCycles: cycles.length,
@@ -94,7 +101,9 @@ app.get("/api/metrics", (_req, res) => {
     opportunitiesScanned,
     betsPerCycle: cycles.length > 0 ? (totalBets / cycles.length).toFixed(1) : "0",
     bankrollRemaining: agent?.getBankroll()?.toFixed(2) ?? "0.00",
-    accuracyRate: "N/A", // requires resolved markets
+    accuracyRate,
+    resolved: acc.resolved,
+    correct: acc.correct,
   });
 });
 
@@ -125,6 +134,47 @@ app.get("/api/logs/stream", (req: Request, res: Response) => {
   req.on("close", () => {
     unsubscribe();
   });
+});
+
+// GET /api/reputation — agent onchain reputation score
+app.get("/api/reputation", async (_req, res) => {
+  const agentId = process.env.ARC_AGENT_ID ?? null;
+  if (!agentId) {
+    res.json({ agentId: null, score: null, feedbackCount: null, message: "No agent ID registered" });
+    return;
+  }
+  const [score, feedbackCount] = await Promise.all([
+    getAgentScore(agentId),
+    getFeedbackCount(agentId),
+  ]);
+  res.json({
+    agentId,
+    score,
+    feedbackCount,
+    validatorAddress: process.env.VALIDATOR_WALLET_ADDRESS ?? null,
+  });
+});
+
+// GET /api/resolution — accuracy stats
+app.get("/api/resolution", (_req, res) => {
+  const bets = decisions;
+  const acc = getAccuracy(bets);
+  res.json(acc);
+});
+
+// POST /api/resolve — trigger market resolution check
+app.post("/api/resolve", async (_req: Request, res: Response) => {
+  if (!agent) {
+    res.status(400).json({ error: "Agent not initialized" });
+    return;
+  }
+  try {
+    await agent.resolvePastMarkets();
+    const acc = getAccuracy(agent.getBetsPlaced());
+    res.json({ status: "done", ...acc });
+  } catch (err) {
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
 });
 
 // POST /api/start — run one analysis cycle

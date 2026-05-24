@@ -50,14 +50,6 @@ Respond with valid JSON ONLY:
   const minProb = Math.max(0.001, marketPrice - 0.10);
   rawProb = Math.max(minProb, Math.min(maxProb, rawProb));
 
-  const edge = rawProb - marketPrice;
-  console.log('[Groq probability]', {
-    question: marketQuestion.substring(0, 60),
-    marketPrice: +(marketPrice * 100).toFixed(1),
-    ourProb: +(rawProb * 100).toFixed(1),
-    edgePp: +(edge * 100).toFixed(2),
-  });
-
   return {
     ourProbability: rawProb,
     reasoning: result.reasoning ?? "No reasoning provided",
@@ -77,7 +69,6 @@ export async function estimateProbability(
 
   try {
     const result = await analyzeMarketWithGroq(marketQuestion, marketPrice);
-    console.log(`  [Groq] prob=${(result.ourProbability * 100).toFixed(1)}% edge=${((result.ourProbability - marketPrice) * 100).toFixed(2)}pp reasoning="${result.reasoning}"`);
     return {
       probability: result.ourProbability,
       reasoning: result.reasoning,

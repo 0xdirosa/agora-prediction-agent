@@ -1,5 +1,6 @@
 import { getClient, waitForCompletion } from "../wallet/circleWallet.js";
 import { IDENTITY_REGISTRY, publicClient } from "../arc/constants.js";
+import type { Address } from "viem";
 
 const IDENTITY_ABI = [
   {
@@ -28,6 +29,16 @@ const IDENTITY_ABI = [
     name: "balanceOf",
     stateMutability: "view",
     inputs: [{ name: "owner", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "tokenOfOwnerByIndex",
+    stateMutability: "view",
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "index", type: "uint256" },
+    ],
     outputs: [{ name: "", type: "uint256" }],
   },
 ] as const;
@@ -93,6 +104,28 @@ export async function getAgentIdentity(agentId: bigint): Promise<AgentIdentity |
       args: [agentId],
     });
     return { agentId, owner, metadataURI };
+  } catch {
+    return null;
+  }
+}
+
+export async function getAgentIdByOwner(walletAddress: string): Promise<bigint | null> {
+  try {
+    const address = walletAddress as Address;
+    const balance = await publicClient.readContract({
+      address: IDENTITY_REGISTRY,
+      abi: IDENTITY_ABI,
+      functionName: "balanceOf",
+      args: [address],
+    });
+    if (balance === 0n) return null;
+    const tokenId = await publicClient.readContract({
+      address: IDENTITY_REGISTRY,
+      abi: IDENTITY_ABI,
+      functionName: "tokenOfOwnerByIndex",
+      args: [address, 0n],
+    });
+    return tokenId;
   } catch {
     return null;
   }

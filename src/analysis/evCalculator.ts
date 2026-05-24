@@ -17,15 +17,11 @@ export function calculateEV(
   const edge = ourProbability - marketPrice;
 
   if (Math.abs(edge) < MIN_EDGE) {
-    console.log(`  [EV] edge=${(edge * 100).toFixed(2)}pp < ${(MIN_EDGE * 100).toFixed(0)}pp → EV=0`);
     return 0;
   }
 
   const oddsIfWin = (1 / marketPrice) - 1;
   const ev = ourProbability * oddsIfWin - (1 - ourProbability);
-  const sign = ev >= 0 ? '+' : '';
-
-  console.log(`  [EV] price=${(marketPrice * 100).toFixed(1)}% ourProb=${(ourProbability * 100).toFixed(1)}% edge=${edge > 0 ? '+' : ''}${(edge * 100).toFixed(2)}pp odds=${oddsIfWin.toFixed(2)}:1 → EV=${sign}${(ev * 100).toFixed(2)}¢/¢`);
 
   return ev;
 }
