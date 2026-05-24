@@ -243,4 +243,31 @@ app.listen(PORT, () => {
   console.log(`║  API:     http://localhost:${PORT}/api          ║`);
   console.log(`║  Dashboard: http://localhost:${PORT}            ║`);
   console.log(`╚═══════════════════════════════════════════════╝\n`);
+
+  // Auto-start autonomous cycle loop
+  const intervalMinutes = parseInt(process.env.POLL_INTERVAL_MINUTES ?? "60", 10);
+  console.log(`[Server] Auto-starting agent — cycle every ${intervalMinutes} minute(s)...\n`);
+
+  (async function autoLoop() {
+    agent = new PredictionAgent();
+    try {
+      await agent.initialize();
+      console.log(`[Server] Agent initialized — mode: ${agent.isDryRun() ? "DRY RUN" : "LIVE"}\n`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Server] Agent init failed: ${msg}`);
+      console.error("[Server] Dashboard will still serve — click Cycle to start manually");
+      return;
+    }
+
+    // Run first cycle immediately
+    await runCycle();
+
+    // Then loop on interval
+    while (true) {
+      console.log(`\n[Server] Sleep ${intervalMinutes} min until next cycle...`);
+      await new Promise(r => setTimeout(r, intervalMinutes * 60 * 1000));
+      await runCycle();
+    }
+  })();
 });
