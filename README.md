@@ -6,9 +6,16 @@
 An autonomous AI agent that continuously monitors **Polymarket** for mispriced prediction markets, estimates true probabilities via **Groq LLM**, computes expected value with **Kelly-optimal bet sizing**, and executes bets through **Circle SCA wallets** on **Arc testnet** — recording every action as a verifiable **ERC-8183** job lifecycle with **ERC-8004** onchain reputation.
 
 [![Dashboard](https://img.shields.io/badge/Dashboard-Live-22c55e)](http://18.140.114.181:3000)
-[![Agent ID](https://img.shields.io/badge/ERC-8004-19687-a855f7)](https://testnet.arcscan.app/address/0x8004A818BFB912233c491871b3d84c89A494BD9e)
+
+<p align="center">
+  <img src="assets/dashboard-screenshot.png" alt="Agora Prediction Agent Dashboard" width="720">
+  <br>
+  <em>Live dashboard — 7 metric cards, cycle progress bar, decision feed with onchain explorer links, SSE log stream</em>
+</p>
+[![Agent ID](https://img.shields.io/badge/ERC-8004-19687-a855f7)](https://testnet.arcscan.app/token/0x8004A818BFB912233c491871b3d84c89A494BD9e/instance/19687)
 [![Arc Testnet](https://img.shields.io/badge/Arc-Testnet-06b6d4)](https://testnet.arcscan.app)
 [![License](https://img.shields.io/badge/License-MIT-606080)](LICENSE)
+[![GitHub](https://img.shields.io/github/stars/0xdirosa/agora-prediction-agent?color=606080)](https://github.com/0xdirosa/agora-prediction-agent)
 
 ---
 
