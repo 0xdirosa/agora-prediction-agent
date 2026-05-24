@@ -204,7 +204,7 @@ isValueBet = EV > 0.10 (10%)
 
 ### Prerequisites
 
-- **Node.js** 22+
+- **Node.js** 18+
 - **Circle API Key** — from [Circle Developer Console](https://console.circle.com) (Keys → Create API Key)
 - **Circle Entity Secret** — register via [Circle docs](https://developers.circle.com/wallets/dev-controlled/register-entity-secret)
 - **Groq API Key** — from [Groq Console](https://console.groq.com)
@@ -227,7 +227,11 @@ cp .env.example .env
 | `GROQ_API_KEY` | ✅ | Groq inference API key |
 | `ARC_AGENT_ID` | ✅ | Agent ID from ERC-8004 registration (`19687`) |
 | `VALIDATOR_WALLET_ADDRESS` | ✅ | Validator wallet hex address |
+| `CIRCLE_WALLET_ID` | ✅ | Owner wallet ID (from wallet setup) |
+| `CIRCLE_WALLET_ADDRESS` | ✅ | Owner wallet address |
+| `CIRCLE_WALLET_SET_ID` | ✅ | Wallet set ID (from wallet setup) |
 | `POLL_INTERVAL_MINUTES` | ❌ | Auto-cycle interval (default: `60`) |
+| `SIMULATED_BANKROLL` | ❌ | Fallback bankroll when USDC balance unavailable (default: `1000`) |
 | `API_PORT` | ❌ | Dashboard port (default: `3000`) |
 
 ### Wallet Setup (first time only)
