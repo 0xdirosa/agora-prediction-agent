@@ -300,7 +300,8 @@ function renderStatus(s){
     cp.textContent = 'Cycle in progress...';
   } else if(s.lastCycle){
     cs.textContent = '✓ DONE';
-    cp.textContent = 'Last: ' + new Date(s.lastCycle.timestamp).toLocaleTimeString() + ' | ' + (s.lastCycle.betsExecuted||0) + ' bets';
+    const nextStr = s.nextCycleAt ? ' | Next: ' + new Date(s.nextCycleAt).toLocaleTimeString() : '';
+    cp.textContent = 'Last: ' + new Date(s.lastCycle.timestamp).toLocaleTimeString() + ' | ' + (s.lastCycle.betsExecuted||0) + ' bets' + nextStr;
   } else {
     cs.textContent = '⏸ IDLE';
     cp.textContent = 'Press Cycle to start';
@@ -395,6 +396,9 @@ function renderDecision(d){
   const jobLink = d.jobId
     ? `<a class="job-link" href="https://testnet.arcscan.app/address/0x0747EEf0706327138c69792bF28Cd525089e4583" target="_blank" title="Job #${d.jobId}">ERC-8183</a>`
     : '';
+  const repLink = d.jobId
+    ? `<a class="job-link" href="https://testnet.arcscan.app/address/0x8004B663056A597Dffe9eCcC1965A193B7388713" target="_blank" title="Reputation feedback" style="border-color:var(--purple);color:var(--purple)">ERC-8004</a>`
+    : '';
   const resolvedTag = d.resolved
     ? `<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:${d.resolvedCorrectly ? 'var(--green-bg)' : 'var(--red-bg)'};color:${d.resolvedCorrectly ? 'var(--green)' : 'var(--red)'}">${d.resolvedCorrectly ? '✓' : '✗'}</span>`
     : '';
@@ -405,6 +409,7 @@ function renderDecision(d){
     <span class="bet-size">${sz > 0 ? '$'+sz.toFixed(2) : '—'}</span>
     <span class="ts">${ts}</span>
     ${jobLink}
+    ${repLink}
     ${resolvedTag}
   </div>`;
 }

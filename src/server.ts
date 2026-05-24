@@ -27,6 +27,7 @@ let agent: PredictionAgent | null = null;
 let decisions: BetRecord[] = loadBets();
 let cycles: CycleSummary[] = loadCycles();
 let serverStartTime = new Date().toISOString();
+let nextCycleTime: Date | null = null;
 
 console.log(`[Server] Loaded ${decisions.length} bets, ${cycles.length} cycles from disk`);
 
@@ -35,13 +36,15 @@ console.log(`[Server] Loaded ${decisions.length} bets, ${cycles.length} cycles f
 // GET /api/status — agent running status + cycle info
 app.get("/api/status", (_req, res) => {
   const mode = agent ? (agent.isDryRun() ? "dry_run" : "live") : "stopped";
+  const isRunning = agent?.isRunning() ?? false;
   res.json({
-    status: agent?.isRunning() ? "running" : agent ? "paused" : "stopped",
+    status: isRunning ? "running" : agent ? "paused" : "stopped",
     mode,
     initialized: agent !== null,
     uptime: serverStartTime,
     cyclesCompleted: cycles.length,
     lastCycle: cycles.length > 0 ? cycles[cycles.length - 1] : null,
+    nextCycleAt: isRunning ? null : nextCycleTime?.toISOString() ?? null,
   });
 });
 
@@ -75,10 +78,10 @@ app.get("/api/wallet", async (_req, res) => {
   });
 });
 
-// GET /api/decisions — last 20 decisions with full reasoning
+// GET /api/decisions — all decisions (up to 100)
 app.get("/api/decisions", (_req, res) => {
-  const last20 = decisions.slice(-20).reverse();
-  res.json({ count: last20.length, decisions: last20 });
+  const all = decisions.slice(-100).reverse();
+  res.json({ count: all.length, decisions: all });
 });
 
 // GET /api/metrics — performance metrics
@@ -265,8 +268,10 @@ app.listen(PORT, () => {
 
     // Then loop on interval
     while (true) {
+      nextCycleTime = new Date(Date.now() + intervalMinutes * 60 * 1000);
       console.log(`\n[Server] Sleep ${intervalMinutes} min until next cycle...`);
       await new Promise(r => setTimeout(r, intervalMinutes * 60 * 1000));
+      nextCycleTime = null;
       await runCycle();
     }
   })();
