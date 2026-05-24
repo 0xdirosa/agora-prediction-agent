@@ -574,6 +574,15 @@ export class PredictionAgent {
       console.log(`# CYCLE ${cycleCount}`);
       console.log(`${"#".repeat(60)}`);
 
+      // Refresh bankroll from actual wallet balance each cycle
+      if (this.walletId) {
+        const bal = await getUSDCBalance(this.walletId).catch(() => 0);
+        if (bal > 0) {
+          this.bankroll = bal;
+          console.log(`[BALANCE] Refreshed from wallet: $${this.bankroll.toFixed(2)} USDC`);
+        }
+      }
+
       try {
         await this.runCycle();
       } catch (err) {
