@@ -45,6 +45,7 @@ export class PredictionAgent {
   private _running: boolean = false;
   private dryRun: boolean = true;
   private agentId: string | null = null;
+  private totalRawMarkets: number = 0;
 
   constructor() {
     this.walletId = process.env.CIRCLE_WALLET_ID ?? process.env.AGENT_WALLET_ID ?? "";
@@ -123,6 +124,7 @@ export class PredictionAgent {
     console.log(`[SCAN] ${timestamp}`);
 
     const markets = await fetchActiveMarkets(undefined, 50);
+    this.totalRawMarkets = markets.length;
     console.log(`[SCAN] Raw markets from Gamma API: ${markets.length}`);
 
     const filtered = markets.filter((m) => {
@@ -529,7 +531,7 @@ export class PredictionAgent {
 
     const summary: CycleSummary = {
       timestamp,
-      marketsScanned: opportunities.length,
+      marketsScanned: this.totalRawMarkets,
       opportunitiesFound: opportunities.filter((o) => o.isValueBet).length,
       opportunitiesWithEV: withEV.length,
       betsEvaluated: filteredTop.length,
@@ -539,7 +541,8 @@ export class PredictionAgent {
       errors,
     };
 
-    saveCycles([summary]);
+    const allCycles = [...loadCycles(), summary];
+    saveCycles(allCycles);
 
     console.log("\n" + "-".repeat(50));
     console.log(`CYCLE SUMMARY:`);

@@ -60,7 +60,6 @@ export interface BetDecision {
 
 export interface BetResult {
   success: boolean;
-  transactionId?: string;
   txHash?: string;
   size: number;
   direction: string;
