@@ -12,10 +12,13 @@ An autonomous AI agent that continuously monitors **Polymarket** for mispriced p
   <br>
   <em>Live dashboard — 7 metric cards, cycle progress bar, decision feed with onchain explorer links, SSE log stream</em>
 </p>
-[![Agent ID](https://img.shields.io/badge/ERC-8004-19687-a855f7)](https://testnet.arcscan.app/token/0x8004A818BFB912233c491871b3d84c89A494BD9e/instance/19687)
-[![Arc Testnet](https://img.shields.io/badge/Arc-Testnet-06b6d4)](https://testnet.arcscan.app)
-[![License](https://img.shields.io/badge/License-MIT-606080)](LICENSE)
-[![GitHub](https://img.shields.io/github/stars/0xdirosa/agora-prediction-agent?color=606080)](https://github.com/0xdirosa/agora-prediction-agent)
+
+<p align="center">
+  <a href="https://testnet.arcscan.app/token/0x8004A818BFB912233c491871b3d84c89A494BD9e/instance/19687"><img src="https://img.shields.io/badge/ERC-8004-19687-a855f7" alt="Agent ID"></a>
+  <a href="https://testnet.arcscan.app"><img src="https://img.shields.io/badge/Arc-Testnet-06b6d4" alt="Arc Testnet"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-606080" alt="License"></a>
+  <a href="https://github.com/0xdirosa/agora-prediction-agent"><img src="https://img.shields.io/github/stars/0xdirosa/agora-prediction-agent?color=606080" alt="GitHub"></a>
+</p>
 
 ---
 
