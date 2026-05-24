@@ -397,11 +397,6 @@ scripts/
 
 Created for the **Agora Agents Hackathon** (May 2026) — a collaboration between [Canteen](https://canteen.io), [Circle](https://circle.com), and [Arc](https://arc.network).
 
-### Submission
-
-- **Deadline**: May 25, 2026 at 11:59 PM ET
-- **Form**: [Google Forms](https://forms.gle/ok3Gr9zhmHnApvK48)
-
 ---
 
 <p align="center">
